@@ -1,0 +1,30 @@
+Product Name,SKU,Description,Cost Price,Selling Price,Min Stock,Size,Color,Style,Variant SKU,Variant Barcode,Stock
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,40,Black,Running,NAM90-40-BLK,6901234580001,5
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,41,Black,Running,NAM90-41-BLK,6901234580002,8
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,42,Black,Running,NAM90-42-BLK,6901234580003,10
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,43,Black,Running,NAM90-43-BLK,6901234580004,7
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,44,Black,Running,NAM90-44-BLK,6901234580005,4
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,42,White,Running,NAM90-42-WHT,6901234580006,6
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,43,White,Running,NAM90-43-WHT,6901234580007,4
+Nike Air Max 90,NAM90,Classic air-cushioned running shoe,45.00,89.99,2,44,White,Running,NAM90-44-WHT,6901234580008,3
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,39,Navy,Running,ADB-UB22-39-NVY,6901234580101,3
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,40,Navy,Running,ADB-UB22-40-NVY,6901234580102,5
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,41,Navy,Running,ADB-UB22-41-NVY,6901234580103,8
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,42,Navy,Running,ADB-UB22-42-NVY,6901234580104,6
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,40,Gray,Casual,ADB-UB22-40-GRY,6901234580105,4
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,41,Gray,Casual,ADB-UB22-41-GRY,6901234580106,3
+Adidas Ultraboost 22,ADB-UB22,High-performance energy-return running shoe,60.00,130.00,2,42,Gray,Casual,ADB-UB22-42-GRY,6901234580107,5
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,40,Sand,Casual,CLK-DB-40-SND,6901234580201,4
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,41,Sand,Casual,CLK-DB-41-SND,6901234580202,6
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,42,Sand,Casual,CLK-DB-42-SND,6901234580203,7
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,43,Sand,Casual,CLK-DB-43-SND,6901234580204,4
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,41,Brown,Casual,CLK-DB-41-BRN,6901234580205,5
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,42,Brown,Casual,CLK-DB-42-BRN,6901234580206,6
+Clarks Desert Boot,CLK-DB,Iconic crepe-sole suede desert boot,35.00,75.00,2,43,Brown,Casual,CLK-DB-43-BRN,6901234580207,3
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,40,Red,Casual,PUM-RSX-40-RED,6901234580301,5
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,41,Red,Casual,PUM-RSX-41-RED,6901234580302,7
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,42,Red,Casual,PUM-RSX-42-RED,6901234580303,6
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,43,Red,Casual,PUM-RSX-43-RED,6901234580304,4
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,41,Black,Casual,PUM-RSX-41-BLK,6901234580305,8
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,42,Black,Casual,PUM-RSX-42-BLK,6901234580306,9
+Puma RS-X Sneaker,PUM-RSX,Bold retro-running lifestyle sneaker,40.00,95.00,2,43,Black,Casual,PUM-RSX-43-BLK,6901234580307,5
