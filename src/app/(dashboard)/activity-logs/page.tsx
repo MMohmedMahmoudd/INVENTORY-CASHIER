@@ -6,6 +6,7 @@ import { Search, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { PageHeader } from "@/components/shared/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +118,7 @@ function TableSkeleton() {
 
 export default function ActivityLogsPage() {
   const supabase = createClient();
+  const t = useT();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -179,17 +181,17 @@ export default function ActivityLogsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Activity Logs"
-        description="Complete audit trail of all user actions in the system."
+        title={t.activityLogs.title}
+        description={t.activityLogs.description}
       />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+          <Search className="absolute inset-s-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <Input
-            className="pl-8"
-            placeholder="Search action or entity..."
+            className="ps-8"
+            placeholder={t.activityLogs.searchPlaceholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
           />
@@ -197,10 +199,10 @@ export default function ActivityLogsPage() {
 
         <Select value={userFilter} onValueChange={(v) => { setUserFilter(v); resetPage(); }}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All Users" />
+            <SelectValue placeholder={t.activityLogs.allUsers} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Users</SelectItem>
+            <SelectItem value="all">{t.activityLogs.allUsers}</SelectItem>
             {users.map((u) => (
               <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
             ))}
@@ -209,34 +211,34 @@ export default function ActivityLogsPage() {
 
         <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); resetPage(); }}>
           <SelectTrigger className="w-36">
-            <SelectValue placeholder="Action Type" />
+            <SelectValue placeholder={t.activityLogs.actionType} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Actions</SelectItem>
-            <SelectItem value="create">Create</SelectItem>
-            <SelectItem value="update">Update</SelectItem>
-            <SelectItem value="delete">Delete</SelectItem>
-            <SelectItem value="login">Login</SelectItem>
-            <SelectItem value="logout">Logout</SelectItem>
-            <SelectItem value="export">Export</SelectItem>
-            <SelectItem value="import">Import</SelectItem>
+            <SelectItem value="all">{t.activityLogs.allActions}</SelectItem>
+            <SelectItem value="create">{t.activityLogs.create}</SelectItem>
+            <SelectItem value="update">{t.activityLogs.update}</SelectItem>
+            <SelectItem value="delete">{t.activityLogs.delete}</SelectItem>
+            <SelectItem value="login">{t.activityLogs.login}</SelectItem>
+            <SelectItem value="logout">{t.activityLogs.logout}</SelectItem>
+            <SelectItem value="export">{t.activityLogs.export}</SelectItem>
+            <SelectItem value="import">{t.activityLogs.import}</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={entityFilter} onValueChange={(v) => { setEntityFilter(v); resetPage(); }}>
           <SelectTrigger className="w-36">
-            <SelectValue placeholder="Entity Type" />
+            <SelectValue placeholder={t.activityLogs.entityType} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Entities</SelectItem>
-            <SelectItem value="product">Product</SelectItem>
-            <SelectItem value="sale">Sale</SelectItem>
-            <SelectItem value="purchase">Purchase</SelectItem>
-            <SelectItem value="inventory_transaction">Inventory</SelectItem>
-            <SelectItem value="user">User</SelectItem>
-            <SelectItem value="category">Category</SelectItem>
-            <SelectItem value="supplier">Supplier</SelectItem>
-            <SelectItem value="customer">Customer</SelectItem>
+            <SelectItem value="all">{t.activityLogs.allEntities}</SelectItem>
+            <SelectItem value="product">{t.activityLogs.product}</SelectItem>
+            <SelectItem value="sale">{t.activityLogs.sale}</SelectItem>
+            <SelectItem value="purchase">{t.activityLogs.purchase}</SelectItem>
+            <SelectItem value="inventory_transaction">{t.activityLogs.inventory}</SelectItem>
+            <SelectItem value="user">{t.activityLogs.user}</SelectItem>
+            <SelectItem value="category">{t.activityLogs.category}</SelectItem>
+            <SelectItem value="supplier">{t.activityLogs.supplier}</SelectItem>
+            <SelectItem value="customer">{t.activityLogs.customer}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -245,14 +247,14 @@ export default function ActivityLogsPage() {
           className="w-36"
           value={dateFrom}
           onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-          title="From date"
+          title={t.activityLogs.fromDate}
         />
         <Input
           type="date"
           className="w-36"
           value={dateTo}
           onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-          title="To date"
+          title={t.activityLogs.toDate}
         />
       </div>
 
@@ -261,12 +263,12 @@ export default function ActivityLogsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">Time</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Entity Type</TableHead>
-              <TableHead>Entity ID</TableHead>
-              <TableHead>Details</TableHead>
+              <TableHead className="whitespace-nowrap">{t.activityLogs.columns.time}</TableHead>
+              <TableHead>{t.activityLogs.columns.user}</TableHead>
+              <TableHead>{t.activityLogs.columns.action}</TableHead>
+              <TableHead>{t.activityLogs.columns.entityType}</TableHead>
+              <TableHead>{t.activityLogs.columns.entityId}</TableHead>
+              <TableHead>{t.activityLogs.columns.details}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -276,7 +278,7 @@ export default function ActivityLogsPage() {
               <TableRow>
                 <TableCell colSpan={6} className="py-12 text-center">
                   <Activity className="mx-auto mb-2 h-8 w-8 text-[hsl(var(--muted-foreground))]" />
-                  <p className="text-[hsl(var(--muted-foreground))]">No activity found</p>
+                  <p className="text-[hsl(var(--muted-foreground))]">{t.activityLogs.noActivity}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -289,7 +291,7 @@ export default function ActivityLogsPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm font-medium">
-                        {userProfile?.full_name ?? "System"}
+                        {userProfile?.full_name ?? t.activityLogs.system}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -326,7 +328,7 @@ export default function ActivityLogsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-[hsl(var(--muted-foreground))]">
           <span>
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+            {t.common.showing} {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} {t.common.of} {total}
           </span>
           <div className="flex items-center gap-2">
             <Button

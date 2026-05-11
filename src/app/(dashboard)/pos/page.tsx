@@ -37,6 +37,7 @@ import type { Html5Qrcode as Html5QrcodeType } from "html5-qrcode";
 
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cart-store";
+import { useT } from "@/lib/i18n";
 import { formatCurrency, formatDateTime, generateInvoiceNumber, getStockStatus, getInitials, cn } from "@/lib/utils";
 import { TAX_RATE } from "@/lib/constants";
 import type { Product, ProductVariant, Category, Customer, Sale, CartItem, PaymentMethod } from "@/types";
@@ -67,14 +68,6 @@ type ReceiptSale = Omit<Sale, "items"> & {
   }>;
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
-  { value: "cash", label: "Cash", icon: <Banknote className="h-4 w-4" /> },
-  { value: "card", label: "Card", icon: <CreditCard className="h-4 w-4" /> },
-  { value: "wallet", label: "Wallet", icon: <Wallet className="h-4 w-4" /> },
-];
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 // ─── Variant Picker Modal ─────────────────────────────────────────────────────
@@ -87,6 +80,7 @@ interface VariantPickerModalProps {
 }
 
 function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModalProps) {
+  const t = useT();
   const variants = React.useMemo(
     () => (product?.variants ?? []).filter((v) => v.is_active),
     [product]
@@ -158,16 +152,16 @@ function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModa
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-500" />
-            {product?.name ?? "Select Variant"}
+            {product?.name ?? t.pos.selectVariant}
           </DialogTitle>
-          <DialogDescription>Choose the size, color, and style.</DialogDescription>
+          <DialogDescription>{t.pos.chooseSizeColorStyle}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Size */}
           {allSizes.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Size</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{t.pos.size}</p>
               <div className="flex flex-wrap gap-2">
                 {allSizes.map((s) => {
                   const avail = sizeAvail(s);
@@ -197,7 +191,7 @@ function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModa
           {/* Color */}
           {allColors.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Color</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{t.pos.color}</p>
               <div className="flex flex-wrap gap-2">
                 {allColors.map((c) => {
                   const avail = colorAvail(c);
@@ -227,7 +221,7 @@ function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModa
           {/* Style */}
           {allStyles.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Style</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">{t.pos.style}</p>
               <div className="flex flex-wrap gap-2">
                 {allStyles.map((s) => {
                   const avail = styleAvail(s);
@@ -273,7 +267,7 @@ function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModa
                 >
                   <span className="font-medium">{labelFor(v)}</span>
                   <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {v.stock_quantity > 0 ? `${v.stock_quantity} in stock` : "Out of stock"}
+                    {v.stock_quantity > 0 ? `${v.stock_quantity} ${t.pos.inStock}` : t.pos.outOfStock}
                   </span>
                 </button>
               ))}
@@ -287,7 +281,7 @@ function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModa
                 <div>
                   <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{labelFor(selectedVariant)}</p>
                   <p className="text-xs text-blue-600/70 dark:text-blue-400/70">
-                    SKU: {selectedVariant.sku} · {stock} in stock
+                    SKU: {selectedVariant.sku} · {stock} {t.pos.inStock}
                   </p>
                 </div>
                 <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatCurrency(price)}</p>
@@ -323,7 +317,7 @@ function VariantPickerModal({ product, open, onClose, onAdd }: VariantPickerModa
               onClick={handleAdd}
             >
               <ShoppingCart className="h-4 w-4" />
-              Add to Cart
+              {t.pos.addToCart}
             </Button>
           </div>
         </div>
@@ -356,6 +350,7 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product, onAdd, isInCart, cartQty }: ProductCardProps) {
+  const t = useT();
   const stockStatus = getStockStatus(product.stock_quantity, product.minimum_stock);
   const outOfStock = stockStatus === "out";
 
@@ -373,13 +368,13 @@ function ProductCard({ product, onAdd, isInCart, cartQty }: ProductCardProps) {
     >
       {/* Cart badge */}
       {isInCart && (
-        <span className="absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow">
+        <span className="absolute top-2 inset-e-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow">
           {cartQty}
         </span>
       )}
 
       {/* Image / placeholder */}
-      <div className="relative h-24 w-full flex-shrink-0 overflow-hidden bg-[hsl(var(--muted))]">
+      <div className="relative h-24 w-full shrink-0 overflow-hidden bg-[hsl(var(--muted))]">
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -395,7 +390,7 @@ function ProductCard({ product, onAdd, isInCart, cartQty }: ProductCardProps) {
         {outOfStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40">
             <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
-              Out of Stock
+              {t.pos.outOfStock}
             </span>
           </div>
         )}
@@ -420,7 +415,7 @@ function ProductCard({ product, onAdd, isInCart, cartQty }: ProductCardProps) {
       {!outOfStock && (
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
           <span className="rounded-lg bg-blue-600/90 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur-sm">
-            {(product.variants ?? []).some((v) => v.is_active) ? "Select Size / Color" : "+ Add to Cart"}
+            {(product.variants ?? []).some((v) => v.is_active) ? t.pos.selectSizeColor : `+ ${t.pos.addToCart}`}
           </span>
         </div>
       )}
@@ -430,9 +425,10 @@ function ProductCard({ product, onAdd, isInCart, cartQty }: ProductCardProps) {
 
 // ── Stock badge ──
 function StockBadge({ status, qty }: { status: "good" | "low" | "critical" | "out"; qty: number }) {
-  if (status === "out") return <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Out</Badge>;
-  if (status === "critical") return <Badge variant="destructive" className="text-[9px] px-1.5 py-0">{qty} left</Badge>;
-  if (status === "low") return <Badge variant="warning" className="text-[9px] px-1.5 py-0">{qty} left</Badge>;
+  const t = useT();
+  if (status === "out") return <Badge variant="destructive" className="text-[9px] px-1.5 py-0">{t.pos.outShort}</Badge>;
+  if (status === "critical") return <Badge variant="destructive" className="text-[9px] px-1.5 py-0">{qty} {t.pos.stockLeft}</Badge>;
+  if (status === "low") return <Badge variant="warning" className="text-[9px] px-1.5 py-0">{qty} {t.pos.stockLeft}</Badge>;
   return <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{qty}</Badge>;
 }
 
@@ -465,6 +461,7 @@ function CartLine({ item, onIncrease, onDecrease, onRemove }: CartLineProps) {
       {/* Qty controls */}
       <div className="flex shrink-0 items-center gap-1">
         <button
+          title="Decrease quantity"
           onClick={onDecrease}
           className="flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 dark:hover:bg-blue-950"
         >
@@ -474,6 +471,7 @@ function CartLine({ item, onIncrease, onDecrease, onRemove }: CartLineProps) {
           {item.quantity}
         </span>
         <button
+          title="Increase quantity"
           onClick={onIncrease}
           className="flex h-6 w-6 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--foreground))] transition-colors hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 dark:hover:bg-blue-950"
         >
@@ -483,10 +481,11 @@ function CartLine({ item, onIncrease, onDecrease, onRemove }: CartLineProps) {
 
       {/* Line total */}
       <div className="flex shrink-0 items-center gap-1.5">
-        <span className="w-16 text-right text-sm font-semibold tabular-nums">
+        <span className="w-16 text-end text-sm font-semibold tabular-nums">
           {formatCurrency(item.total)}
         </span>
         <button
+          title="remove"
           onClick={onRemove}
           className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:hover:bg-red-950"
         >
@@ -505,6 +504,7 @@ interface CustomerSelectorProps {
 }
 
 function CustomerSelector({ customers, selected, onSelect }: CustomerSelectorProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -546,30 +546,31 @@ function CustomerSelector({ customers, selected, onSelect }: CustomerSelectorPro
       >
         {selected ? (
           <>
-            <Avatar className="h-5 w-5 flex-shrink-0">
+            <Avatar className="h-5 w-5 shrink-0">
               <AvatarFallback className="text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 {getInitials(selected.name)}
               </AvatarFallback>
             </Avatar>
-            <span className="flex-1 truncate text-left font-medium">{selected.name}</span>
+            <span className="flex-1 truncate text-start font-medium">{selected.name}</span>
             <button
+              title="Clear selection"
               onClick={(e) => { e.stopPropagation(); onSelect(null); }}
-              className="ml-auto rounded-full p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              className="ms-auto rounded-full p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
             >
               <X className="h-3 w-3" />
             </button>
           </>
         ) : (
           <>
-            <User className="h-4 w-4 flex-shrink-0 text-[hsl(var(--muted-foreground))]" />
-            <span className="flex-1 text-left text-[hsl(var(--muted-foreground))]">Walk-in Customer</span>
+            <User className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
+            <span className="flex-1 text-start text-[hsl(var(--muted-foreground))]">{t.pos.walkInCustomer}</span>
             <ChevronDown className={cn("h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] transition-transform", open && "rotate-180")} />
           </>
         )}
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-xl">
+        <div className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-xl">
           <div className="border-b border-[hsl(var(--border))] p-2">
             <div className="flex items-center gap-2 rounded-md bg-[hsl(var(--muted))] px-2 py-1.5">
               <Search className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
@@ -577,7 +578,7 @@ function CustomerSelector({ customers, selected, onSelect }: CustomerSelectorPro
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search customers..."
+                placeholder={t.pos.searchCustomers}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
               />
             </div>
@@ -590,13 +591,13 @@ function CustomerSelector({ customers, selected, onSelect }: CustomerSelectorPro
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))]"
             >
               <UserPlus className="h-4 w-4" />
-              Walk-in Customer
+              {t.pos.walkInCustomer}
             </button>
             <Separator />
 
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-[hsl(var(--muted-foreground))]">
-                No customers found
+                {t.pos.noCustomersFound}
               </p>
             ) : (
               filtered.map((c) => (
@@ -608,16 +609,16 @@ function CustomerSelector({ customers, selected, onSelect }: CustomerSelectorPro
                     selected?.id === c.id && "bg-blue-50 dark:bg-blue-950/50"
                   )}
                 >
-                  <Avatar className="h-6 w-6 flex-shrink-0">
+                  <Avatar className="h-6 w-6 shrink-0">
                     <AvatarFallback className="text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                       {getInitials(c.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0 text-left">
+                  <div className="flex-1 min-w-0 text-start">
                     <p className="font-medium truncate">{c.name}</p>
                     {c.phone && <p className="text-[11px] text-[hsl(var(--muted-foreground))] truncate">{c.phone}</p>}
                   </div>
-                  {selected?.id === c.id && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />}
+                  {selected?.id === c.id && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
                 </button>
               ))
             )}
@@ -636,6 +637,7 @@ interface ReceiptModalProps {
 }
 
 function ReceiptModal({ sale, open, onClose }: ReceiptModalProps) {
+  const t = useT();
   const handlePrint = () => {
     if (!sale) return;
     const win = window.open("", "_blank", "width=420,height=700,scrollbars=yes");
@@ -716,10 +718,10 @@ function ReceiptModal({ sale, open, onClose }: ReceiptModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-emerald-600">
             <CheckCircle2 className="h-5 w-5" />
-            Payment Successful
+            {t.pos.paymentSuccessful}
           </DialogTitle>
           <DialogDescription>
-            {sale ? `Invoice ${sale.invoice_number} has been processed.` : "Processing your receipt…"}
+            {sale ? `Invoice ${sale.invoice_number} has been processed.` : t.pos.processingReceipt}
           </DialogDescription>
         </DialogHeader>
 
@@ -784,10 +786,10 @@ function ReceiptModal({ sale, open, onClose }: ReceiptModalProps) {
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={handlePrint}>
                 <Printer className="h-4 w-4" />
-                Print Receipt
+                {t.pos.printReceipt}
               </Button>
               <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={onClose}>
-                New Sale
+                {t.pos.newSale}
               </Button>
             </div>
           </>
@@ -799,13 +801,15 @@ function ReceiptModal({ sale, open, onClose }: ReceiptModalProps) {
 
 // ── Keyboard shortcuts cheatsheet ──
 function ShortcutsHint() {
+  const t = useT();
+  const shortcuts = [
+    ["F1", t.pos.shortcuts.search],
+    ["F2", t.pos.shortcuts.pay],
+    ["Esc", t.pos.shortcuts.clearCart],
+  ];
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[hsl(var(--muted-foreground))]">
-      {[
-        ["F1", "Search"],
-        ["F2", "Pay"],
-        ["Esc", "Clear cart"],
-      ].map(([key, label]) => (
+      {shortcuts.map(([key, label]) => (
         <span key={key} className="flex items-center gap-1">
           <kbd className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 font-mono text-[9px] font-semibold text-[hsl(var(--foreground))]">
             {key}
@@ -826,6 +830,7 @@ interface QRScannerModalProps {
 }
 
 function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
+  const t = useT();
   type Phase = "loading" | "selecting" | "starting" | "scanning" | "error";
   const [phase, setPhase] = useState<Phase>("loading");
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
@@ -915,12 +920,10 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanLine className="h-5 w-5 text-blue-500" />
-            Scan QR / Barcode
+            {t.pos.scanQrBarcode}
           </DialogTitle>
           <DialogDescription>
-            {phase === "scanning"
-              ? "Point the camera at a product QR code or barcode."
-              : "Select a camera or scanner to use."}
+            {phase === "scanning" ? t.pos.pointCamera : t.pos.selectCamera}
           </DialogDescription>
         </DialogHeader>
 
@@ -936,7 +939,7 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
               {phase === "loading" && (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                  <p className="text-sm text-[hsl(var(--muted-foreground))]">Detecting cameras…</p>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))]">{t.pos.detectingCameras}</p>
                 </div>
               )}
 
@@ -944,7 +947,7 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
               {phase === "starting" && (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-black rounded-xl">
                   <Loader2 className="h-8 w-8 animate-spin text-white" />
-                  <p className="text-sm text-white/60">Starting camera…</p>
+                  <p className="text-sm text-white/60">{t.pos.startingCamera}</p>
                 </div>
               )}
 
@@ -960,7 +963,7 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
                         key={cam.id}
                         onClick={() => startCamera(cam.id)}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-3 text-left",
+                          "flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-3 text-start",
                           "transition-colors hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                         )}
                       >
@@ -971,14 +974,14 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
                           <p className="truncate text-sm font-medium">
                             {cam.label || `Camera ${i + 1}`}
                           </p>
-                          <p className="text-xs text-[hsl(var(--muted-foreground))]">Click to start scanning</p>
+                          <p className="text-xs text-[hsl(var(--muted-foreground))]">{t.pos.clickToStart}</p>
                         </div>
                         <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" />
                       </button>
                     ))}
                   </div>
                   <p className="text-center text-[11px] text-[hsl(var(--muted-foreground))]">
-                    Connect a USB webcam or use a phone-as-webcam app (DroidCam, iVCam) to scan with your phone.
+                    {t.pos.phoneWebcamTip}
                   </p>
                 </div>
               )}
@@ -997,15 +1000,15 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
           {phase === "scanning" && (
             <button
               onClick={changeCamera}
-              className="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm hover:bg-black/80"
+              className="absolute inset-e-2 bottom-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm hover:bg-black/80"
             >
-              Change Camera
+              {t.pos.changeCamera}
             </button>
           )}
         </div>
 
         <Button variant="outline" className="w-full" onClick={onClose}>
-          Cancel
+          {t.common.cancel}
         </Button>
       </DialogContent>
     </Dialog>
@@ -1015,6 +1018,15 @@ function QRScannerModal({ open, onClose, onScanned }: QRScannerModalProps) {
 // ─── Main POS Page ─────────────────────────────────────────────────────────────
 
 export default function POSPage() {
+  const t = useT();
+
+  // ── PAYMENT_METHODS defined inside component to pick up translations ──
+  const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
+    { value: "cash", label: t.pos.paymentMethods.cash, icon: <Banknote className="h-4 w-4" /> },
+    { value: "card", label: t.pos.paymentMethods.card, icon: <CreditCard className="h-4 w-4" /> },
+    { value: "wallet", label: t.pos.paymentMethods.wallet, icon: <Wallet className="h-4 w-4" /> },
+  ];
+
   // ── Cart store ──
   const items = useCartStore((s) => s.items);
   const customer = useCartStore((s) => s.customer);
@@ -1196,7 +1208,7 @@ export default function POSPage() {
       setReceiptOpen(true);
     },
     onError: (err: Error) => {
-      toast.error("Payment failed: " + err.message);
+      toast.error(t.pos.paymentFailed + err.message);
     },
   });
 
@@ -1240,7 +1252,7 @@ export default function POSPage() {
       setVariantPickerProduct(product);
     } else {
       addItem(product);
-      toast.success(`${product.name} added to cart`);
+      toast.success(`${product.name}`);
     }
   }, [addItem]);
 
@@ -1267,13 +1279,13 @@ export default function POSPage() {
     if (!product) product = products.find((p) => p.barcode === text);
     if (!product) product = products.find((p) => p.sku === text);
 
-    if (!product) { toast.error("No product found for scanned code"); return; }
+    if (!product) { toast.error(t.pos.noProductForCode); return; }
 
     if (matchedVariant) {
-      if (matchedVariant.stock_quantity === 0) { toast.error(`${product.name} — this variant is out of stock`); return; }
+      if (matchedVariant.stock_quantity === 0) { toast.error(`${product.name} — ${t.pos.outOfStock}`); return; }
       addItem(product, 1, matchedVariant);
       const label = [matchedVariant.size, matchedVariant.color, matchedVariant.style].filter(Boolean).join(" / ");
-      toast.success(`${product.name}${label ? ` (${label})` : ""} added to cart`);
+      toast.success(`${product.name}${label ? ` (${label})` : ""}`);
       return;
     }
 
@@ -1285,12 +1297,12 @@ export default function POSPage() {
     }
 
     if (getStockStatus(product.stock_quantity, product.minimum_stock) === "out") {
-      toast.error(`${product.name} is out of stock`);
+      toast.error(`${product.name} — ${t.pos.outOfStock}`);
       return;
     }
     addItem(product);
-    toast.success(`${product.name} added to cart`);
-  }, [products, addItem]);
+    toast.success(`${product.name}`);
+  }, [products, addItem, t]);
 
   // ── Discount sync ──
   const handleDiscountBlur = () => {
@@ -1316,23 +1328,24 @@ export default function POSPage() {
         {/* ════════════════════════════════════════════════════════════════════ */}
         {/* LEFT PANEL — Product catalog (60%)                                  */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        <div className="flex w-[60%] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+        <div className="flex w-[60%] flex-col border-e border-[hsl(var(--border))] bg-[hsl(var(--background))]">
 
           {/* ── Top bar: search + scan ── */}
           <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+              <Search className="absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
               <Input
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, SKU, or barcode… (F1)"
-                className="pl-9 pr-4 h-10 bg-[hsl(var(--background))] focus-visible:ring-blue-500"
+                placeholder={t.pos.searchPlaceholder}
+                className="ps-9 pe-4 h-10 bg-[hsl(var(--background))] focus-visible:ring-blue-500"
               />
               {search && (
                 <button
+                  title="Clear search"
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                  className="absolute inset-e-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -1341,7 +1354,7 @@ export default function POSPage() {
             <Button
               variant="outline"
               size="icon"
-              title="Scan barcode / QR"
+              title={t.pos.scanBarcode}
               className="h-10 w-10 shrink-0"
               onClick={() => setScannerOpen(true)}
             >
@@ -1360,7 +1373,7 @@ export default function POSPage() {
                   : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
               )}
             >
-              All
+              {t.pos.all}
               <span className={cn(
                 "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
                 selectedCategory === "all" ? "bg-white/20" : "bg-[hsl(var(--background))]"
@@ -1407,14 +1420,14 @@ export default function POSPage() {
               <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                 <Package className="h-12 w-12 text-[hsl(var(--muted-foreground))] opacity-30" />
                 <div>
-                  <p className="font-semibold text-[hsl(var(--foreground))]">No products found</p>
+                  <p className="font-semibold text-[hsl(var(--foreground))]">{t.pos.noProductsFound}</p>
                   <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                    {search ? `No results for "${search}"` : "No products in this category"}
+                    {search ? `${t.pos.noResultsFor} "${search}"` : t.pos.noProductsInCategory}
                   </p>
                 </div>
                 {search && (
                   <Button variant="outline" size="sm" onClick={() => setSearch("")}>
-                    Clear search
+                    {t.pos.clearSearch}
                   </Button>
                 )}
               </div>
@@ -1436,7 +1449,7 @@ export default function POSPage() {
           {/* ── Status bar ── */}
           <div className="flex items-center justify-between border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""} shown
+              {filteredProducts.length} {t.qr.products}
             </p>
             <ShortcutsHint />
           </div>
@@ -1452,7 +1465,7 @@ export default function POSPage() {
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-blue-600" />
               <h2 className="text-base font-bold text-[hsl(var(--foreground))]">
-                Cart
+                {t.pos.cart}
               </h2>
               {items.length > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">
@@ -1466,7 +1479,7 @@ export default function POSPage() {
                 className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950"
               >
                 <Trash2 className="h-3 w-3" />
-                Clear
+                {t.pos.clear}
               </button>
             )}
           </div>
@@ -1489,14 +1502,14 @@ export default function POSPage() {
                   <ShoppingCart className="h-8 w-8 text-[hsl(var(--muted-foreground))] opacity-50" />
                 </div>
                 <div>
-                  <p className="font-semibold text-[hsl(var(--foreground))]">Cart is empty</p>
+                  <p className="font-semibold text-[hsl(var(--foreground))]">{t.pos.cartEmpty}</p>
                   <p className="mt-0.5 text-sm text-[hsl(var(--muted-foreground))]">
-                    Click a product to add it
+                    {t.pos.clickToAdd}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--muted))] px-3 py-2 text-xs text-[hsl(var(--muted-foreground))]">
                   <Keyboard className="h-3.5 w-3.5" />
-                  Press <kbd className="mx-1 rounded bg-[hsl(var(--background))] px-1.5 py-0.5 font-mono font-semibold text-[hsl(var(--foreground))]">F1</kbd> to search
+                  {t.pos.pressF1} <kbd className="mx-1 rounded bg-[hsl(var(--background))] px-1.5 py-0.5 font-mono font-semibold text-[hsl(var(--foreground))]">F1</kbd> {t.pos.toSearch}
                 </div>
               </div>
             ) : (
@@ -1524,21 +1537,21 @@ export default function POSPage() {
 
             {/* Subtotal */}
             <div className="flex items-center justify-between text-sm">
-              <span className="text-[hsl(var(--muted-foreground))]">Subtotal</span>
+              <span className="text-[hsl(var(--muted-foreground))]">{t.pos.subtotal}</span>
               <span className="tabular-nums font-medium">{formatCurrency(subtotal)}</span>
             </div>
 
             {/* Tax */}
             <div className="flex items-center justify-between text-sm">
               <span className="text-[hsl(var(--muted-foreground))]">
-                Tax ({(TAX_RATE * 100).toFixed(0)}%)
+                {t.pos.tax} ({(TAX_RATE * 100).toFixed(0)}%)
               </span>
               <span className="tabular-nums font-medium">{formatCurrency(tax)}</span>
             </div>
 
             {/* Discount */}
             <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-[hsl(var(--muted-foreground))]">Discount ($)</span>
+              <span className="text-[hsl(var(--muted-foreground))]">{t.pos.discount}</span>
               <div className="flex items-center gap-1">
                 <span className="text-[hsl(var(--muted-foreground))]">-$</span>
                 <input
@@ -1550,7 +1563,7 @@ export default function POSPage() {
                   onBlur={handleDiscountBlur}
                   placeholder="0.00"
                   className={cn(
-                    "w-20 rounded-md border bg-[hsl(var(--background))] px-2 py-1 text-right text-sm tabular-nums outline-none",
+                    "w-20 rounded-md border bg-[hsl(var(--background))] px-2 py-1 text-end text-sm tabular-nums outline-none",
                     "border-[hsl(var(--border))] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20",
                     "placeholder:text-[hsl(var(--muted-foreground))]"
                   )}
@@ -1562,7 +1575,7 @@ export default function POSPage() {
 
             {/* Total */}
             <div className="flex items-center justify-between">
-              <span className="text-base font-bold text-[hsl(var(--foreground))]">Total</span>
+              <span className="text-base font-bold text-[hsl(var(--foreground))]">{t.pos.total}</span>
               <span className="text-xl font-extrabold tabular-nums text-blue-600">
                 {formatCurrency(total)}
               </span>
@@ -1572,7 +1585,7 @@ export default function POSPage() {
           {/* ── Payment method selector ── */}
           <div className="border-t border-[hsl(var(--border))] px-4 py-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-              Payment Method
+              {t.pos.paymentMethod}
             </p>
             <div className="grid grid-cols-3 gap-2">
               {PAYMENT_METHODS.map((pm) => (
@@ -1608,13 +1621,13 @@ export default function POSPage() {
               {processSale.isPending ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Processing…
+                  {t.pos.processing}
                 </>
               ) : (
                 <>
                   <ReceiptText className="h-5 w-5" />
-                  Process Payment
-                  <span className="ml-auto rounded-md bg-white/20 px-2 py-0.5 text-xs font-medium">
+                  {t.pos.processPayment}
+                  <span className="ms-auto rounded-md bg-white/20 px-2 py-0.5 text-xs font-medium">
                     F2
                   </span>
                 </>
@@ -1631,9 +1644,8 @@ export default function POSPage() {
         onClose={() => setVariantPickerProduct(null)}
         onAdd={(product, quantity, variant) => {
           addItem(product, quantity, variant);
-          toast.success(
-            `${product.name} (${[variant.size, variant.color, variant.style].filter(Boolean).join(" / ")}) added to cart`
-          );
+          const label = [variant.size, variant.color, variant.style].filter(Boolean).join(" / ");
+          toast.success(`${product.name}${label ? ` (${label})` : ""}`);
         }}
       />
 
@@ -1657,11 +1669,10 @@ export default function POSPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[hsl(var(--destructive))]">
               <AlertCircle className="h-5 w-5" />
-              Clear Cart?
+              {t.pos.clearCartTitle}
             </DialogTitle>
             <DialogDescription>
-              This will remove all {items.length} item{items.length !== 1 ? "s" : ""} from the cart.
-              This action cannot be undone.
+              {t.pos.clearCartDesc}
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 pt-2">
@@ -1670,7 +1681,7 @@ export default function POSPage() {
               className="flex-1"
               onClick={() => setClearConfirmOpen(false)}
             >
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button
               variant="destructive"
@@ -1679,10 +1690,10 @@ export default function POSPage() {
                 clearCart();
                 setDiscountInput("");
                 setClearConfirmOpen(false);
-                toast.info("Cart cleared");
+                toast.info(t.pos.cartCleared);
               }}
             >
-              Clear Cart
+              {t.pos.clearCart}
             </Button>
           </div>
         </DialogContent>

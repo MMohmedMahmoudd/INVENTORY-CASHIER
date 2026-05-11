@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { LangProvider } from "@/components/providers/lang-provider";
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -27,8 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <QueryProvider>
             <AuthProvider>
-              {children}
-              <Toaster position="top-right" richColors closeButton />
+              <LangProvider>
+                {children}
+                <Toaster position="top-right" richColors closeButton />
+              </LangProvider>
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Customer } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ function CustomerDialog({
   isSaving: boolean;
 }) {
   const isEdit = !!customer;
+  const t = useT();
 
   const {
     register,
@@ -77,24 +79,24 @@ function CustomerDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Customer" : "Add Customer"}</DialogTitle>
+          <DialogTitle>{isEdit ? t.customers.dialog.editTitle : t.customers.dialog.addTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSave)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="cust-name">Full Name *</Label>
-            <Input id="cust-name" placeholder="John Doe" {...register("name")} />
+            <Label htmlFor="cust-name">{t.customers.dialog.nameLabel}</Label>
+            <Input id="cust-name" placeholder={t.customers.dialog.namePlaceholder} {...register("name")} />
             {errors.name && (
               <p className="text-xs text-[hsl(var(--destructive))]">{errors.name.message}</p>
             )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="cust-phone">Phone</Label>
-              <Input id="cust-phone" type="tel" placeholder="+1 555 000 0000" {...register("phone")} />
+              <Label htmlFor="cust-phone">{t.common.phone}</Label>
+              <Input id="cust-phone" type="tel" placeholder={t.customers.dialog.phonePlaceholder} {...register("phone")} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cust-email">Email</Label>
-              <Input id="cust-email" type="email" placeholder="email@example.com" {...register("email")} />
+              <Label htmlFor="cust-email">{t.common.email}</Label>
+              <Input id="cust-email" type="email" placeholder={t.customers.dialog.emailPlaceholder} {...register("email")} />
               {errors.email && (
                 <p className="text-xs text-[hsl(var(--destructive))]">{errors.email.message}</p>
               )}
@@ -102,10 +104,10 @@ function CustomerDialog({
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Create"}
+              {isSaving ? t.common.saving : isEdit ? t.common.saveChanges : t.common.create}
             </Button>
           </DialogFooter>
         </form>
@@ -129,23 +131,24 @@ function DeleteDialog({
   onConfirm: () => void;
   isDeleting: boolean;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Customer</DialogTitle>
+          <DialogTitle>{t.customers.deleteTitle}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          Are you sure you want to delete{" "}
-          <span className="font-semibold text-[hsl(var(--foreground))]">{customer?.name}</span>?
-          Their purchase history will be retained.
+          {t.customers.deleteMessage}{" "}
+          <span className="font-semibold text-[hsl(var(--foreground))]">{customer?.name}</span>?{" "}
+          {t.customers.deleteWarning}
         </p>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? t.common.deleting : t.common.delete}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -158,6 +161,7 @@ function DeleteDialog({
 export default function CustomersPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editTarget, setEditTarget] = React.useState<Customer | null>(null);
@@ -192,12 +196,12 @@ export default function CustomersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success(editTarget ? "Customer updated" : "Customer created");
+      toast.success(editTarget ? t.customers.toast.updated : t.customers.toast.created);
       setFormOpen(false);
       setEditTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to save customer");
+      toast.error(err.message ?? t.customers.toast.saveError);
     },
   });
 
@@ -208,11 +212,11 @@ export default function CustomersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Customer deleted");
+      toast.success(t.customers.toast.deleted);
       setDeleteTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to delete customer");
+      toast.error(err.message ?? t.customers.toast.deleteError);
     },
   });
 
@@ -222,14 +226,14 @@ export default function CustomersPage() {
   const columns: ColumnDef<Customer>[] = [
     {
       accessorKey: "name",
-      header: "Name",
+      header: t.customers.columns.name,
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue() as string}</span>
       ),
     },
     {
       accessorKey: "phone",
-      header: "Phone",
+      header: t.customers.columns.phone,
       cell: ({ getValue }) => {
         const v = getValue() as string | null;
         return v ? (
@@ -243,7 +247,7 @@ export default function CustomersPage() {
     },
     {
       accessorKey: "email",
-      header: "Email",
+      header: t.customers.columns.email,
       cell: ({ getValue }) => {
         const v = getValue() as string | null;
         return v ? (
@@ -257,7 +261,7 @@ export default function CustomersPage() {
     },
     {
       accessorKey: "created_at",
-      header: "Joined",
+      header: t.customers.columns.joined,
       cell: ({ getValue }) => (
         <span className="text-sm text-[hsl(var(--muted-foreground))]">
           {formatDate(getValue() as string)}
@@ -266,7 +270,7 @@ export default function CustomersPage() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t.customers.columns.actions,
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
@@ -289,12 +293,12 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Customers"
-        description="Manage your customer base and contact details."
+        title={t.customers.title}
+        description={t.customers.description}
         action={
           <Button onClick={openAdd}>
             <Plus className="h-4 w-4" />
-            Add Customer
+            {t.customers.addCustomer}
           </Button>
         }
       />
@@ -303,9 +307,9 @@ export default function CustomersPage() {
         columns={columns}
         data={customers}
         searchKey="name"
-        searchPlaceholder="Search customers..."
+        searchPlaceholder={t.customers.searchPlaceholder}
         loading={isLoading}
-        emptyMessage="No customers yet. Add your first customer."
+        emptyMessage={t.customers.emptyMessage}
       />
 
       <CustomerDialog

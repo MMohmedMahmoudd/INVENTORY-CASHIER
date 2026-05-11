@@ -1,12 +1,14 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useUIStore } from "@/store/ui-store";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+export function formatCurrency(amount: number, currency?: string): string {
+  const curr = currency ?? (useUIStore.getState().currency ?? "USD");
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: curr }).format(amount);
 }
 
 export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions): string {

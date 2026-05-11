@@ -12,6 +12,7 @@ import Image from "next/image";
 
 import { createClient } from "@/lib/supabase/client";
 import { slugify } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Category, Supplier, Product } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export default function EditProductPage() {
   const id = params.id;
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
@@ -75,7 +77,6 @@ export default function EditProductPage() {
     resolver: zodResolver(productSchema) as any,
   });
 
-  // ── Fetch product ──
   const { data: product, isLoading: productLoading } = useQuery<Product>({
     queryKey: ["product", id],
     queryFn: async () => {
@@ -96,7 +97,6 @@ export default function EditProductPage() {
     enabled: !!id,
   });
 
-  // Populate form once product is loaded
   React.useEffect(() => {
     if (!product) return;
     reset({
@@ -117,7 +117,6 @@ export default function EditProductPage() {
     }
   }, [product, reset]);
 
-  // ── Fetch categories & suppliers ──
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["categories"],
     queryFn: async () => {
@@ -136,7 +135,6 @@ export default function EditProductPage() {
     },
   });
 
-  // ── Image handling ──
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -152,7 +150,6 @@ export default function EditProductPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ── Submit mutation ──
   const mutation = useMutation({
     mutationFn: async (values: ProductFormValues) => {
       let imageUrl: string | null = product?.image_url ?? null;
@@ -196,11 +193,11 @@ export default function EditProductPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product", id] });
-      toast.success("Product updated successfully");
+      toast.success(t.productForm.toast.updated);
       router.push("/products");
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to update product");
+      toast.error(err.message ?? t.productForm.toast.updateError);
     },
   });
 
@@ -240,7 +237,7 @@ export default function EditProductPage() {
   if (!product) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-[hsl(var(--muted-foreground))]">Product not found.</p>
+        <p className="text-[hsl(var(--muted-foreground))]">{t.productForm.productNotFound}</p>
       </div>
     );
   }
@@ -248,11 +245,11 @@ export default function EditProductPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Edit Product"
-        description={`Editing: ${product.name}`}
+        title={t.productForm.editTitle}
+        description={`${t.productForm.editDescriptionPrefix} ${product.name}`}
         action={
           <Button variant="outline" onClick={() => router.push("/products")}>
-            Cancel
+            {t.productForm.cancel}
           </Button>
         }
       />
@@ -264,11 +261,11 @@ export default function EditProductPage() {
           <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Basic Information</CardTitle>
+                <CardTitle className="text-base">{t.productForm.basicInfo}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="name">Product Name *</Label>
+                  <Label htmlFor="name">{t.productForm.productName}</Label>
                   <Input id="name" {...register("name")} />
                   {errors.name && (
                     <p className="text-xs text-[hsl(var(--destructive))]">{errors.name.message}</p>
@@ -276,7 +273,7 @@ export default function EditProductPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="sku">SKU *</Label>
+                  <Label htmlFor="sku">{t.productForm.sku}</Label>
                   <Input id="sku" {...register("sku")} />
                   {errors.sku && (
                     <p className="text-xs text-[hsl(var(--destructive))]">{errors.sku.message}</p>
@@ -284,19 +281,19 @@ export default function EditProductPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t.productForm.description}</Label>
                   <Textarea id="description" rows={3} {...register("description")} />
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Category</Label>
+                    <Label>{t.productForm.category}</Label>
                     <Select
                       defaultValue={product.category_id ?? undefined}
                       onValueChange={(v) => setValue("category_id", v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder={t.productForm.categoryPlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((c) => (
@@ -308,13 +305,13 @@ export default function EditProductPage() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Supplier</Label>
+                    <Label>{t.productForm.supplier}</Label>
                     <Select
                       defaultValue={product.supplier_id ?? undefined}
                       onValueChange={(v) => setValue("supplier_id", v)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select supplier" />
+                        <SelectValue placeholder={t.productForm.supplierPlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
                         {suppliers.map((s) => (
@@ -331,19 +328,19 @@ export default function EditProductPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Pricing</CardTitle>
+                <CardTitle className="text-base">{t.productForm.pricing}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="cost_price">Cost Price *</Label>
+                    <Label htmlFor="cost_price">{t.productForm.costPrice}</Label>
                     <Input id="cost_price" type="number" step="0.01" min="0" {...register("cost_price")} />
                     {errors.cost_price && (
                       <p className="text-xs text-[hsl(var(--destructive))]">{errors.cost_price.message}</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="selling_price">Selling Price *</Label>
+                    <Label htmlFor="selling_price">{t.productForm.sellingPrice}</Label>
                     <Input id="selling_price" type="number" step="0.01" min="0" {...register("selling_price")} />
                     {errors.selling_price && (
                       <p className="text-xs text-[hsl(var(--destructive))]">{errors.selling_price.message}</p>
@@ -355,26 +352,26 @@ export default function EditProductPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Inventory</CardTitle>
+                <CardTitle className="text-base">{t.productForm.inventory}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="stock_quantity">Current Stock *</Label>
+                    <Label htmlFor="stock_quantity">{t.productForm.currentStock}</Label>
                     <Input id="stock_quantity" type="number" min="0" step="1" {...register("stock_quantity")} />
                     {errors.stock_quantity && (
                       <p className="text-xs text-[hsl(var(--destructive))]">{errors.stock_quantity.message}</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="minimum_stock">Minimum Stock *</Label>
+                    <Label htmlFor="minimum_stock">{t.productForm.minimumStock}</Label>
                     <Input id="minimum_stock" type="number" min="0" step="1" {...register("minimum_stock")} />
                     {errors.minimum_stock && (
                       <p className="text-xs text-[hsl(var(--destructive))]">{errors.minimum_stock.message}</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="unit">Unit *</Label>
+                    <Label htmlFor="unit">{t.productForm.unit}</Label>
                     <Input id="unit" {...register("unit")} />
                     {errors.unit && (
                       <p className="text-xs text-[hsl(var(--destructive))]">{errors.unit.message}</p>
@@ -389,7 +386,7 @@ export default function EditProductPage() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Product Image</CardTitle>
+                <CardTitle className="text-base">{t.productForm.productImage}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {imagePreview ? (
@@ -397,8 +394,9 @@ export default function EditProductPage() {
                     <Image src={imagePreview} alt="Preview" fill className="object-cover" />
                     <button
                       type="button"
+                      title="Remove image"
                       onClick={clearImage}
-                      className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                      className="absolute inset-e-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -410,12 +408,13 @@ export default function EditProductPage() {
                     className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[hsl(var(--border))] p-8 text-center transition-colors hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--accent))]"
                   >
                     <Upload className="h-8 w-8 text-[hsl(var(--muted-foreground))]" />
-                    <span className="text-sm text-[hsl(var(--muted-foreground))]">Click to upload image</span>
+                    <span className="text-sm text-[hsl(var(--muted-foreground))]">{t.productForm.clickToUpload}</span>
                   </button>
                 )}
                 <input
                   ref={fileInputRef}
                   type="file"
+                  title={t.productForm.productImage}
                   accept="image/*"
                   className="hidden"
                   onChange={handleImageChange}
@@ -425,13 +424,13 @@ export default function EditProductPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Status</CardTitle>
+                <CardTitle className="text-base">{t.productForm.status}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">Active</p>
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">Show in POS</p>
+                    <p className="text-sm font-medium">{t.productForm.active}</p>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))]">{t.productForm.showInPOSShort}</p>
                   </div>
                   <Switch
                     defaultChecked={product.is_active}
@@ -452,11 +451,11 @@ export default function EditProductPage() {
             onClick={() => router.push("/products")}
             disabled={mutation.isPending}
           >
-            Cancel
+            {t.productForm.cancel}
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {mutation.isPending ? "Saving..." : "Save Changes"}
+            {mutation.isPending ? t.productForm.saving : t.productForm.saveChanges}
           </Button>
         </div>
       </form>

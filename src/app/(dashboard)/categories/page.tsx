@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { slugify } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Category } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ function CategoryDialog({
   isSaving: boolean;
 }) {
   const isEdit = !!category;
+  const t = useT();
 
   const {
     register,
@@ -83,26 +85,26 @@ function CategoryDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Category" : "Add Category"}</DialogTitle>
+          <DialogTitle>{isEdit ? t.categories.dialog.editTitle : t.categories.dialog.addTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSave)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="cat-name">Name *</Label>
-            <Input id="cat-name" placeholder="e.g. Electronics" {...register("name")} />
+            <Label htmlFor="cat-name">{t.categories.dialog.nameLabel}</Label>
+            <Input id="cat-name" placeholder={t.categories.dialog.namePlaceholder} {...register("name")} />
             {errors.name && (
               <p className="text-xs text-[hsl(var(--destructive))]">{errors.name.message}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="cat-description">Description</Label>
-            <Textarea id="cat-description" rows={3} placeholder="Optional..." {...register("description")} />
+            <Label htmlFor="cat-description">{t.categories.dialog.descriptionLabel}</Label>
+            <Textarea id="cat-description" rows={3} placeholder={t.common.optional} {...register("description")} />
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Create"}
+              {isSaving ? t.common.saving : isEdit ? t.common.saveChanges : t.common.create}
             </Button>
           </DialogFooter>
         </form>
@@ -126,23 +128,24 @@ function DeleteDialog({
   onConfirm: () => void;
   isDeleting: boolean;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Category</DialogTitle>
+          <DialogTitle>{t.categories.deleteTitle}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          Are you sure you want to delete{" "}
-          <span className="font-semibold text-[hsl(var(--foreground))]">{category?.name}</span>?
-          Products in this category will be unassigned.
+          {t.categories.deleteMessage}{" "}
+          <span className="font-semibold text-[hsl(var(--foreground))]">{category?.name}</span>?{" "}
+          {t.categories.deleteWarning}
         </p>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? t.common.deleting : t.common.delete}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -155,12 +158,12 @@ function DeleteDialog({
 export default function CategoriesPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editTarget, setEditTarget] = React.useState<Category | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Category | null>(null);
 
-  // ── Fetch categories with product count ──
   const { data: categories = [], isLoading } = useQuery<CategoryWithCount[]>({
     queryKey: ["categories-with-count"],
     queryFn: async () => {
@@ -169,7 +172,6 @@ export default function CategoriesPage() {
         .select("id, name, slug, description, created_at, products(count)")
         .order("name");
       if (error) throw error;
-      // Supabase returns aggregated count as [{count: n}] on joined tables
       return (data ?? []).map((c) => {
         const raw = c as unknown as Category & { products: { count: number }[] | null };
         return {
@@ -180,7 +182,6 @@ export default function CategoriesPage() {
     },
   });
 
-  // ── Save mutation (create + update) ──
   const saveMutation = useMutation({
     mutationFn: async ({ values, id }: { values: CategoryFormValues; id?: string }) => {
       const payload = {
@@ -199,16 +200,15 @@ export default function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: ["categories-with-count"] });
-      toast.success(editTarget ? "Category updated" : "Category created");
+      toast.success(editTarget ? t.categories.toast.updated : t.categories.toast.created);
       setFormOpen(false);
       setEditTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to save category");
+      toast.error(err.message ?? t.categories.toast.saveError);
     },
   });
 
-  // ── Delete mutation ──
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("categories").delete().eq("id", id);
@@ -217,36 +217,28 @@ export default function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: ["categories-with-count"] });
-      toast.success("Category deleted");
+      toast.success(t.categories.toast.deleted);
       setDeleteTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to delete category");
+      toast.error(err.message ?? t.categories.toast.deleteError);
     },
   });
 
-  const openAdd = () => {
-    setEditTarget(null);
-    setFormOpen(true);
-  };
+  const openAdd = () => { setEditTarget(null); setFormOpen(true); };
+  const openEdit = (cat: Category) => { setEditTarget(cat); setFormOpen(true); };
 
-  const openEdit = (cat: Category) => {
-    setEditTarget(cat);
-    setFormOpen(true);
-  };
-
-  // ── Columns ──
   const columns: ColumnDef<CategoryWithCount>[] = [
     {
       accessorKey: "name",
-      header: "Name",
+      header: t.categories.columns.name,
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue() as string}</span>
       ),
     },
     {
       accessorKey: "slug",
-      header: "Slug",
+      header: t.categories.columns.slug,
       cell: ({ getValue }) => (
         <code className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 text-xs">
           {getValue() as string}
@@ -255,7 +247,7 @@ export default function CategoriesPage() {
     },
     {
       accessorKey: "description",
-      header: "Description",
+      header: t.categories.columns.description,
       cell: ({ getValue }) => (
         <span className="text-sm text-[hsl(var(--muted-foreground))]">
           {(getValue() as string | null) ?? "—"}
@@ -264,14 +256,14 @@ export default function CategoriesPage() {
     },
     {
       accessorKey: "product_count",
-      header: "Products",
+      header: t.categories.columns.products,
       cell: ({ getValue }) => (
         <Badge variant="secondary">{getValue() as number}</Badge>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t.categories.columns.actions,
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
@@ -299,12 +291,12 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Categories"
-        description="Organise your products into categories."
+        title={t.categories.title}
+        description={t.categories.description}
         action={
           <Button onClick={openAdd}>
             <Plus className="h-4 w-4" />
-            Add Category
+            {t.categories.addCategory}
           </Button>
         }
       />
@@ -313,9 +305,9 @@ export default function CategoriesPage() {
         columns={columns}
         data={categories}
         searchKey="name"
-        searchPlaceholder="Search categories..."
+        searchPlaceholder={t.categories.searchPlaceholder}
         loading={isLoading}
-        emptyMessage="No categories yet. Create one to get started."
+        emptyMessage={t.categories.emptyMessage}
       />
 
       <CategoryDialog

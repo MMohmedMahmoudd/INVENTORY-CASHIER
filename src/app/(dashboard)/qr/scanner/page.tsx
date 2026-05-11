@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cart-store";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,12 +27,13 @@ import type { Product } from "@/types";
 // ─── Stock status badge ───────────────────────────────────────────────────────
 
 function StockBadge({ product }: { product: Product }) {
+  const t = useT();
   const status = getStockStatus(product.stock_quantity, product.minimum_stock);
   const map = {
-    good: { label: "In Stock", className: "bg-green-100 text-green-700 border-green-200" },
-    low: { label: "Low Stock", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-    critical: { label: "Critical", className: "bg-orange-100 text-orange-700 border-orange-200" },
-    out: { label: "Out of Stock", className: "bg-red-100 text-red-700 border-red-200" },
+    good: { label: t.inventory.inStock, className: "bg-green-100 text-green-700 border-green-200" },
+    low: { label: t.inventory.lowStock, className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+    critical: { label: t.inventory.critical, className: "bg-orange-100 text-orange-700 border-orange-200" },
+    out: { label: t.inventory.outOfStock, className: "bg-red-100 text-red-700 border-red-200" },
   };
   const { label, className } = map[status];
   return (
@@ -50,6 +52,7 @@ function ProductCard({
   product: Product;
   onAddToCart: (product: Product) => void;
 }) {
+  const t = useT();
   return (
     <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-sm">
       <div className="flex items-start gap-4">
@@ -83,20 +86,20 @@ function ProductCard({
 
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
             <div>
-              <span className="text-[hsl(var(--muted-foreground))]">Price</span>
+              <span className="text-[hsl(var(--muted-foreground))]">{t.qr.price}</span>
               <p className="font-semibold text-[hsl(var(--foreground))]">
                 {formatCurrency(product.selling_price)}
               </p>
             </div>
             <div>
-              <span className="text-[hsl(var(--muted-foreground))]">Stock</span>
+              <span className="text-[hsl(var(--muted-foreground))]">{t.qr.stock}</span>
               <p className="font-semibold text-[hsl(var(--foreground))]">
                 {product.stock_quantity} {product.unit}
               </p>
             </div>
             {product.category && (
               <div>
-                <span className="text-[hsl(var(--muted-foreground))]">Category</span>
+                <span className="text-[hsl(var(--muted-foreground))]">{t.qr.category}</span>
                 <p className="font-semibold text-[hsl(var(--foreground))]">
                   {product.category.name}
                 </p>
@@ -111,8 +114,8 @@ function ProductCard({
               disabled={product.stock_quantity === 0}
               className="w-full sm:w-auto"
             >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Cart & Go to POS
+              <ShoppingCart className="me-2 h-4 w-4" />
+              {t.qr.addToCartGotoPOS}
             </Button>
           </div>
         </div>
@@ -127,6 +130,7 @@ export default function QRScannerPage() {
   const router = useRouter();
   const supabase = createClient();
   const addItem = useCartStore((s) => s.addItem);
+  const t = useT();
 
   const [manualInput, setManualInput] = useState("");
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
@@ -183,14 +187,14 @@ export default function QRScannerPage() {
       if (product) {
         setScannedProduct(product);
         setScanSuccess(true);
-        toast.success(`Found: ${product.name}`);
+        toast.success(`${product.name}`);
       } else {
-        setScanError("Product not found. Try a different code.");
-        toast.error("Product not found");
+        setScanError(t.qr.productNotFound);
+        toast.error(t.qr.productNotFound);
       }
     } catch {
-      setScanError("Failed to look up product. Please try again.");
-      toast.error("Lookup failed");
+      setScanError(t.qr.lookupFailed);
+      toast.error(t.qr.lookupFailed);
     } finally {
       setLoading(false);
     }
@@ -199,7 +203,7 @@ export default function QRScannerPage() {
   // ── Add to POS ──
   const handleAddToCart = (product: Product) => {
     addItem(product, 1);
-    toast.success(`${product.name} added to cart`);
+    toast.success(`${product.name}`);
     router.push("/pos");
   };
 
@@ -294,10 +298,10 @@ export default function QRScannerPage() {
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-[hsl(var(--foreground))]">
           <Scan className="h-6 w-6 text-blue-500" />
-          QR Code Scanner
+          {t.qr.scannerTitle}
         </h1>
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-          Scan a product QR code or barcode to look it up and add it to POS
+          {t.qr.scannerDesc}
         </p>
       </div>
 
@@ -305,7 +309,7 @@ export default function QRScannerPage() {
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
         <div className="mb-3 flex items-center gap-2">
           <Camera className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <h2 className="font-medium text-[hsl(var(--foreground))]">Camera Scanner</h2>
+          <h2 className="font-medium text-[hsl(var(--foreground))]">{t.qr.cameraScanner}</h2>
         </div>
 
         {/* Scanner container — html5-qrcode injects into this div */}
@@ -317,7 +321,7 @@ export default function QRScannerPage() {
 
         {!scannerReady && (
           <p className="mt-2 text-center text-sm text-[hsl(var(--muted-foreground))]">
-            Initializing camera...
+            {t.qr.initializingCamera}
           </p>
         )}
       </div>
@@ -326,23 +330,23 @@ export default function QRScannerPage() {
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
         <div className="mb-3 flex items-center gap-2">
           <Keyboard className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <h2 className="font-medium text-[hsl(var(--foreground))]">Manual Entry</h2>
+          <h2 className="font-medium text-[hsl(var(--foreground))]">{t.qr.manualEntry}</h2>
         </div>
         <form onSubmit={handleManualSubmit} className="flex gap-2">
           <div className="flex-1">
             <Label htmlFor="manual-input" className="sr-only">
-              SKU or Barcode
+              {t.qr.skuOrBarcode}
             </Label>
             <Input
               id="manual-input"
-              placeholder="Enter SKU, barcode, or scan value..."
+              placeholder={t.qr.enterSkuPlaceholder}
               value={manualInput}
               onChange={(e) => setManualInput(e.target.value)}
               autoComplete="off"
             />
           </div>
           <Button type="submit" disabled={loading || !manualInput.trim()}>
-            {loading ? "Looking up..." : "Look Up"}
+            {loading ? t.qr.lookingUp : t.qr.lookUp}
           </Button>
         </form>
       </div>
@@ -352,7 +356,7 @@ export default function QRScannerPage() {
         <div className="flex items-center justify-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-blue-500" />
           <span className="text-sm text-[hsl(var(--muted-foreground))]">
-            Looking up product...
+            {t.qr.lookingUpProduct}
           </span>
         </div>
       )}
@@ -361,7 +365,7 @@ export default function QRScannerPage() {
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
-            <p className="font-medium">Scan Failed</p>
+            <p className="font-medium">{t.qr.scanFailed}</p>
             <p className="mt-0.5 text-sm">{scanError}</p>
             <Button
               size="sm"
@@ -369,7 +373,7 @@ export default function QRScannerPage() {
               className="mt-3 border-red-300 text-red-700 hover:bg-red-100"
               onClick={handleNewScan}
             >
-              Scan Again
+              {t.qr.scanAgain}
             </Button>
           </div>
         </div>
@@ -379,9 +383,9 @@ export default function QRScannerPage() {
         <div>
           <div className="mb-3 flex items-center gap-2 text-green-600">
             <CheckCircle2 className="h-5 w-5" />
-            <span className="font-medium">Product Found</span>
-            <Badge className="ml-auto bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-              Scan successful
+            <span className="font-medium">{t.qr.productFound}</span>
+            <Badge className="ms-auto bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
+              {t.qr.scanSuccessful}
             </Badge>
           </div>
 
@@ -392,7 +396,7 @@ export default function QRScannerPage() {
             className="mt-3 w-full"
             onClick={handleNewScan}
           >
-            Scan Another Product
+            {t.qr.scanAnother}
           </Button>
         </div>
       )}

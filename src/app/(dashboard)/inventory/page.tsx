@@ -19,6 +19,7 @@ import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, getStockStatus, downloadBlob, csvToBlob, slugify } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,6 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   barcode:     ["barcode", "ean", "upc"],
   unit:        ["unit", "uom"],
   description: ["description", "notes", "product_description"],
-  // Shoe / clothing variant columns
   size:        ["size", "shoe_size", "clothing_size", "variant_size", "us_size", "eu_size", "uk_size"],
   color:       ["color", "colour", "variant_color", "variant_colour", "shade"],
   style:       ["style", "variant_style", "shoe_style", "shoe_type"],
@@ -115,11 +115,12 @@ interface AdjustForm {
 // ─── Stock Status Badge ───────────────────────────────────────────────────────
 
 function StockBadge({ status }: { status: ReturnType<typeof getStockStatus> }) {
+  const t = useT();
   const map = {
-    good: { label: "In Stock", variant: "success" as const, icon: CheckCircle2 },
-    low: { label: "Low Stock", variant: "warning" as const, icon: AlertTriangle },
-    critical: { label: "Critical", variant: "destructive" as const, icon: AlertTriangle },
-    out: { label: "Out of Stock", variant: "destructive" as const, icon: XCircle },
+    good:     { label: t.inventory.inStock,    variant: "success" as const,      icon: CheckCircle2 },
+    low:      { label: t.inventory.lowStock,   variant: "warning" as const,      icon: AlertTriangle },
+    critical: { label: t.inventory.critical,   variant: "destructive" as const,  icon: AlertTriangle },
+    out:      { label: t.inventory.outOfStock, variant: "destructive" as const,  icon: XCircle },
   };
   const { label, variant, icon: Icon } = map[status];
   return (
@@ -147,6 +148,7 @@ function StockBar({ quantity, minimum }: { quantity: number; minimum: number }) 
       <div className="h-2 w-24 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
         <div
           className={`h-full rounded-full transition-all ${colors[status]}`}
+          // eslint-disable-next-line react/forbid-dom-props
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -178,6 +180,7 @@ function TableSkeleton() {
 export default function InventoryPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -247,7 +250,6 @@ export default function InventoryPage() {
       const newStock = adjustProduct.stock_quantity + delta;
       if (newStock < 0) throw new Error("Stock cannot go below 0");
 
-      // Insert transaction
       const { error: txError } = await supabase
         .from("inventory_transactions")
         .insert({
@@ -261,7 +263,6 @@ export default function InventoryPage() {
         });
       if (txError) throw txError;
 
-      // Update product stock
       const { error: prodError } = await supabase
         .from("products")
         .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
@@ -269,20 +270,24 @@ export default function InventoryPage() {
       if (prodError) throw prodError;
     },
     onSuccess: () => {
-      toast.success("Stock adjusted successfully");
+      toast.success(t.inventory.toast.adjusted);
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setAdjustProduct(null);
       setAdjustForm({ mode: "add", quantity: "", reason: "", type: "adjustment" });
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to adjust stock");
+      toast.error(err.message || t.inventory.toast.adjustError);
     },
   });
 
   // ── CSV Export ────────────────────────────────────────────────────────────────
 
   const handleExport = useCallback(() => {
-    const headers = ["SKU", "Name", "Category", "Stock", "Min Stock", "Status", "Cost", "Price"];
+    const headers = [
+      t.inventory.columns.sku, t.inventory.columns.product, t.inventory.columns.category,
+      t.inventory.columns.stockLevel, t.inventory.columns.minStock,
+      t.inventory.columns.status, t.inventory.columns.price,
+    ];
     const rows = filtered.map((p) => [
       p.sku,
       p.name,
@@ -290,12 +295,11 @@ export default function InventoryPage() {
       String(p.stock_quantity),
       String(p.minimum_stock),
       getStockStatus(p.stock_quantity, p.minimum_stock),
-      String(p.cost_price),
       String(p.selling_price),
     ]);
     downloadBlob(csvToBlob([headers, ...rows]), `inventory-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success("CSV exported");
-  }, [filtered]);
+    toast.success(t.inventory.toast.csvExported);
+  }, [filtered, t]);
 
   // ── CSV Import ────────────────────────────────────────────────────────────────
 
@@ -321,7 +325,6 @@ export default function InventoryPage() {
         let created = 0, updated = 0, failed = 0;
         const now = new Date().toISOString();
 
-        // ── Helper closures ───────────────────────────────────────────────────
         const strVal = (cols: string[], idx: number) =>
           idx !== -1 ? cols[idx]?.trim() || undefined : undefined;
         const numVal = (cols: string[], idx: number, parser: (s: string) => number) => {
@@ -348,12 +351,9 @@ export default function InventoryPage() {
           });
         };
 
-        // ── Detect mode: variant import when any of size / color / style present ──
         const isVariantImport = col.size !== -1 || col.color !== -1 || col.style !== -1;
 
         if (isVariantImport) {
-          // ── VARIANT MODE: group rows by base SKU ────────────────────────────
-          // Each unique base SKU = one parent product; each row = one variant
           const groups = new Map<string, string[][]>();
           for (const line of allLines.slice(1)) {
             if (!line.trim()) continue;
@@ -369,7 +369,6 @@ export default function InventoryPage() {
             const name = strVal(firstRow, col.name);
             if (!name) { failed += rows.length; continue; }
 
-            // Find or create the parent product
             const { data: existingProd } = await supabase
               .from("products").select("id").eq("sku", baseSku).single();
 
@@ -377,7 +376,6 @@ export default function InventoryPage() {
 
             if (existingProd) {
               productId = existingProd.id;
-              // Update base info only (stock auto-managed by variant trigger)
               const patch: Record<string, unknown> = { name, updated_at: now };
               const cost  = numVal(firstRow, col.cost,  parseFloat); if (cost  !== undefined) patch.cost_price   = cost;
               const price = numVal(firstRow, col.price, parseFloat); if (price !== undefined) patch.selling_price = price;
@@ -394,7 +392,7 @@ export default function InventoryPage() {
                 name,
                 slug: `${slugify(name)}-${Math.random().toString(36).substring(2, 6)}`,
                 sku: baseSku,
-                stock_quantity: 0,   // variant trigger will sum this automatically
+                stock_quantity: 0,
                 minimum_stock: minStk,
                 cost_price: cost,
                 selling_price: price,
@@ -412,7 +410,6 @@ export default function InventoryPage() {
               created++;
             }
 
-            // Insert / update each variant row
             for (const varCols of rows) {
               const size  = strVal(varCols, col.size)  ?? null;
               const color = strVal(varCols, col.color) ?? null;
@@ -456,7 +453,6 @@ export default function InventoryPage() {
           }
 
         } else {
-          // ── STANDARD MODE: one row = one product (original logic) ───────────
           for (const line of allLines.slice(1)) {
             if (!line.trim()) continue;
             const cols = parseCSVRow(line);
@@ -549,9 +545,16 @@ export default function InventoryPage() {
 
   // ─────────────────────────────────────────────────────────────────────────────
 
+  const stockLabels = {
+    good:     t.inventory.inStock,
+    low:      t.inventory.lowStock,
+    critical: t.inventory.critical,
+    out:      t.inventory.outOfStock,
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Inventory Management" description="Monitor stock levels and adjust inventory.">
+      <PageHeader title={t.inventory.title} description={t.inventory.description}>
         <Button
           variant="outline"
           size="sm"
@@ -559,8 +562,8 @@ export default function InventoryPage() {
           onClick={() => csvInputRef.current?.click()}
         >
           {isImporting
-            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing…</>
-            : <><Upload className="mr-2 h-4 w-4" />Import CSV</>
+            ? <><Loader2 className="me-2 h-4 w-4 animate-spin" />{t.inventory.importing}</>
+            : <><Upload className="me-2 h-4 w-4" />{t.inventory.importCsv}</>
           }
         </Button>
         <input
@@ -572,18 +575,18 @@ export default function InventoryPage() {
           onChange={handleImport}
         />
         <Button variant="outline" size="sm" onClick={handleExport}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          <Download className="me-2 h-4 w-4" />
+          {t.inventory.exportCsv}
         </Button>
       </PageHeader>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-50">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+          <Search className="absolute inset-s-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <Input
-            className="pl-8"
-            placeholder="Search by name or SKU..."
+            className="ps-8"
+            placeholder={t.inventory.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -591,10 +594,10 @@ export default function InventoryPage() {
 
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder={t.inventory.allCategories} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">{t.inventory.allCategories}</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
@@ -603,14 +606,14 @@ export default function InventoryPage() {
 
         <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as StockFilter)}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Stock Status" />
+            <SelectValue placeholder={t.inventory.stockStatus} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="good">In Stock</SelectItem>
-            <SelectItem value="low">Low Stock</SelectItem>
-            <SelectItem value="critical">Critical</SelectItem>
-            <SelectItem value="out">Out of Stock</SelectItem>
+            <SelectItem value="all">{t.inventory.allStatuses}</SelectItem>
+            <SelectItem value="good">{t.inventory.inStock}</SelectItem>
+            <SelectItem value="low">{t.inventory.lowStock}</SelectItem>
+            <SelectItem value="critical">{t.inventory.critical}</SelectItem>
+            <SelectItem value="out">{t.inventory.outOfStock}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -621,7 +624,6 @@ export default function InventoryPage() {
           const count = products.filter(
             (p) => getStockStatus(p.stock_quantity, p.minimum_stock) === s
           ).length;
-          const labels = { good: "In Stock", low: "Low Stock", critical: "Critical", out: "Out of Stock" };
           const colors = {
             good: "text-emerald-600",
             low: "text-amber-600",
@@ -631,10 +633,11 @@ export default function InventoryPage() {
           return (
             <button
               key={s}
+              type="button"
               onClick={() => setStockFilter(stockFilter === s ? "all" : s)}
-              className={`rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-left transition-colors hover:bg-[hsl(var(--accent))] ${stockFilter === s ? "ring-2 ring-[hsl(var(--ring))]" : ""}`}
+              className={`rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-start transition-colors hover:bg-[hsl(var(--accent))] ${stockFilter === s ? "ring-2 ring-[hsl(var(--ring))]" : ""}`}
             >
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">{labels[s]}</p>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{stockLabels[s]}</p>
               <p className={`mt-1 text-2xl font-bold ${colors[s]}`}>{count}</p>
             </button>
           );
@@ -646,14 +649,14 @@ export default function InventoryPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>SKU</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Stock Level</TableHead>
-              <TableHead>Min Stock</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t.inventory.columns.sku}</TableHead>
+              <TableHead>{t.inventory.columns.product}</TableHead>
+              <TableHead>{t.inventory.columns.category}</TableHead>
+              <TableHead>{t.inventory.columns.stockLevel}</TableHead>
+              <TableHead>{t.inventory.columns.minStock}</TableHead>
+              <TableHead>{t.inventory.columns.status}</TableHead>
+              <TableHead>{t.inventory.columns.price}</TableHead>
+              <TableHead className="text-end">{t.inventory.columns.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -663,7 +666,7 @@ export default function InventoryPage() {
               <TableRow>
                 <TableCell colSpan={8} className="py-12 text-center">
                   <Package className="mx-auto mb-2 h-8 w-8 text-[hsl(var(--muted-foreground))]" />
-                  <p className="text-[hsl(var(--muted-foreground))]">No products found</p>
+                  <p className="text-[hsl(var(--muted-foreground))]">{t.inventory.noProducts}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -695,7 +698,7 @@ export default function InventoryPage() {
                       <StockBadge status={status} />
                     </TableCell>
                     <TableCell>{formatCurrency(product.selling_price)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-end">
                       <Button
                         size="sm"
                         variant="outline"
@@ -704,7 +707,7 @@ export default function InventoryPage() {
                           setAdjustForm({ mode: "add", quantity: "", reason: "", type: "adjustment" });
                         }}
                       >
-                        Adjust
+                        {t.inventory.adjust}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -719,18 +722,18 @@ export default function InventoryPage() {
       <Dialog open={!!adjustProduct} onOpenChange={(o) => !o && setAdjustProduct(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Adjust Stock</DialogTitle>
+            <DialogTitle>{t.inventory.adjustTitle}</DialogTitle>
             <DialogDescription>
-              {adjustProduct?.name} — Current stock: {adjustProduct?.stock_quantity}
+              {adjustProduct?.name} — {t.inventory.currentStock} {adjustProduct?.stock_quantity}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
-            {/* Add / Subtract toggle */}
             <div className="flex rounded-lg border border-[hsl(var(--border))] p-1 gap-1">
               {(["add", "subtract"] as const).map((m) => (
                 <button
                   key={m}
+                  type="button"
                   onClick={() => setAdjustForm((f) => ({ ...f, mode: m }))}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                     adjustForm.mode === m
@@ -739,23 +742,23 @@ export default function InventoryPage() {
                   }`}
                 >
                   {m === "add" ? <Plus className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
-                  {m === "add" ? "Add Stock" : "Remove Stock"}
+                  {m === "add" ? t.inventory.addStock : t.inventory.removeStock}
                 </button>
               ))}
             </div>
 
             <div className="grid gap-2">
-              <Label>Quantity</Label>
+              <Label>{t.inventory.quantity}</Label>
               <Input
                 type="number"
                 min="1"
-                placeholder="Enter quantity"
+                placeholder={t.inventory.enterQuantity}
                 value={adjustForm.quantity}
                 onChange={(e) => setAdjustForm((f) => ({ ...f, quantity: e.target.value }))}
               />
               {adjustProduct && adjustForm.quantity && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  New stock:{" "}
+                  {t.inventory.newStock}{" "}
                   <span className="font-semibold">
                     {Math.max(
                       0,
@@ -769,7 +772,7 @@ export default function InventoryPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label>Transaction Type</Label>
+              <Label>{t.inventory.transactionType}</Label>
               <Select
                 value={adjustForm.type}
                 onValueChange={(v) =>
@@ -780,18 +783,18 @@ export default function InventoryPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="adjustment">Adjustment</SelectItem>
-                  <SelectItem value="purchase">Purchase</SelectItem>
-                  <SelectItem value="return">Return</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="adjustment">{t.inventory.transactionTypes.adjustment}</SelectItem>
+                  <SelectItem value="purchase">{t.inventory.transactionTypes.purchase}</SelectItem>
+                  <SelectItem value="return">{t.inventory.transactionTypes.return}</SelectItem>
+                  <SelectItem value="transfer">{t.inventory.transactionTypes.transfer}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label>Reason (optional)</Label>
+              <Label>{t.inventory.reason}</Label>
               <Textarea
-                placeholder="Enter reason for adjustment..."
+                placeholder={t.inventory.reasonPlaceholder}
                 rows={2}
                 value={adjustForm.reason}
                 onChange={(e) => setAdjustForm((f) => ({ ...f, reason: e.target.value }))}
@@ -801,13 +804,13 @@ export default function InventoryPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAdjustProduct(null)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button
               onClick={() => adjustMutation.mutate()}
               disabled={!adjustForm.quantity || adjustMutation.isPending}
             >
-              {adjustMutation.isPending ? "Saving..." : "Confirm Adjustment"}
+              {adjustMutation.isPending ? t.common.saving : t.inventory.confirmAdjustment}
             </Button>
           </DialogFooter>
         </DialogContent>

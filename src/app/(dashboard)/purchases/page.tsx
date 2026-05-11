@@ -16,6 +16,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,12 +52,6 @@ import type { Purchase, PurchaseStatus, Supplier, Product } from "@/types";
 
 const PAGE_SIZE = 20;
 
-const STATUS_CONFIG: Record<PurchaseStatus, { label: string; variant: "warning" | "success" | "destructive" }> = {
-  pending: { label: "Pending", variant: "warning" },
-  received: { label: "Received", variant: "success" },
-  cancelled: { label: "Cancelled", variant: "destructive" },
-};
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PurchaseLineItem {
@@ -90,14 +85,15 @@ function ViewPurchaseDialog({
   purchase: Purchase | null;
   onClose: () => void;
 }) {
+  const t = useT();
   if (!purchase) return null;
   return (
     <Dialog open={!!purchase} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Purchase Details</DialogTitle>
+          <DialogTitle>{t.purchases.details}</DialogTitle>
           <DialogDescription>
-            {purchase.supplier?.name ?? "Unknown Supplier"} · {formatDateTime(purchase.created_at)}
+            {purchase.supplier?.name ?? t.purchases.unknownSupplier} · {formatDateTime(purchase.created_at)}
           </DialogDescription>
         </DialogHeader>
 
@@ -105,19 +101,19 @@ function ViewPurchaseDialog({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead>{t.purchases.productLabel}</TableHead>
+                <TableHead className="text-end">{t.purchases.qtyLabel}</TableHead>
+                <TableHead className="text-end">{t.purchases.unitCostLabel}</TableHead>
+                <TableHead className="text-end">{t.common.total}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(purchase.items ?? []).map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.product?.name ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatCurrency(item.cost_price)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">{formatCurrency(item.total)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{item.quantity}</TableCell>
+                  <TableCell className="text-end tabular-nums">{formatCurrency(item.cost_price)}</TableCell>
+                  <TableCell className="text-end tabular-nums font-semibold">{formatCurrency(item.total)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -125,7 +121,7 @@ function ViewPurchaseDialog({
         </div>
 
         <div className="flex justify-between rounded-lg bg-[hsl(var(--muted))] px-4 py-3 font-semibold">
-          <span>Total</span>
+          <span>{t.purchases.totalLabel}</span>
           <span>{formatCurrency(purchase.total)}</span>
         </div>
       </DialogContent>
@@ -148,6 +144,7 @@ function NewPurchaseDialog({
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [supplierId, setSupplierId] = useState("");
   const [items, setItems] = useState<PurchaseLineItem[]>([
@@ -172,23 +169,17 @@ function NewPurchaseDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!supplierId) throw new Error("Please select a supplier");
+      if (!supplierId) throw new Error(t.purchases.pleaseSelectSupplier);
       const validItems = items.filter((i) => i.product_id && i.quantity > 0);
-      if (validItems.length === 0) throw new Error("Add at least one valid item");
+      if (validItems.length === 0) throw new Error(t.purchases.addAtLeastOne);
 
-      // Create purchase
       const { data: purchase, error: purchaseError } = await supabase
         .from("purchases")
-        .insert({
-          supplier_id: supplierId,
-          total,
-          status: "pending",
-        })
+        .insert({ supplier_id: supplierId, total, status: "pending" })
         .select()
         .single();
       if (purchaseError) throw purchaseError;
 
-      // Create purchase items
       const { error: itemsError } = await supabase.from("purchase_items").insert(
         validItems.map((item) => ({
           purchase_id: purchase.id,
@@ -201,29 +192,29 @@ function NewPurchaseDialog({
       if (itemsError) throw itemsError;
     },
     onSuccess: () => {
-      toast.success("Purchase created successfully");
+      toast.success(t.purchases.toast.created);
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
       onClose();
       setSupplierId("");
       setItems([{ product_id: "", quantity: 1, cost_price: 0 }]);
     },
-    onError: (err: Error) => toast.error(err.message || "Failed to create purchase"),
+    onError: (err: Error) => toast.error(err.message || t.purchases.toast.createError),
   });
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Purchase Order</DialogTitle>
-          <DialogDescription>Create a new purchase order for stock replenishment.</DialogDescription>
+          <DialogTitle>{t.purchases.newPurchaseTitle}</DialogTitle>
+          <DialogDescription>{t.purchases.newPurchaseDesc}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
           <div className="grid gap-2">
-            <Label>Supplier</Label>
+            <Label>{t.purchases.supplierLabel}</Label>
             <Select value={supplierId} onValueChange={setSupplierId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select supplier..." />
+                <SelectValue placeholder={t.purchases.supplierPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {suppliers.map((s) => (
@@ -235,19 +226,19 @@ function NewPurchaseDialog({
 
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
-              <Label>Items</Label>
+              <Label>{t.purchases.itemsLabel}</Label>
               <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                <Plus className="mr-1 h-3 w-3" /> Add Item
+                <Plus className="me-1 h-3 w-3" /> {t.purchases.addItem}
               </Button>
             </div>
 
             {items.map((item, idx) => (
               <div key={idx} className="grid grid-cols-[1fr_80px_100px_32px] gap-2 items-end">
                 <div>
-                  {idx === 0 && <Label className="text-xs mb-1 block">Product</Label>}
+                  {idx === 0 && <Label className="text-xs mb-1 block">{t.purchases.productLabel}</Label>}
                   <Select value={item.product_id} onValueChange={(v) => onProductSelect(idx, v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select product..." />
+                      <SelectValue placeholder={t.purchases.productPlaceholder} />
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((p) => (
@@ -257,7 +248,7 @@ function NewPurchaseDialog({
                   </Select>
                 </div>
                 <div>
-                  {idx === 0 && <Label className="text-xs mb-1 block">Qty</Label>}
+                  {idx === 0 && <Label className="text-xs mb-1 block">{t.purchases.qtyLabel}</Label>}
                   <Input
                     type="number"
                     min="1"
@@ -266,7 +257,7 @@ function NewPurchaseDialog({
                   />
                 </div>
                 <div>
-                  {idx === 0 && <Label className="text-xs mb-1 block">Unit Cost</Label>}
+                  {idx === 0 && <Label className="text-xs mb-1 block">{t.purchases.unitCostLabel}</Label>}
                   <Input
                     type="number"
                     min="0"
@@ -290,15 +281,15 @@ function NewPurchaseDialog({
           </div>
 
           <div className="flex items-center justify-between rounded-lg bg-[hsl(var(--muted))] px-4 py-3">
-            <span className="text-sm font-medium">Total</span>
+            <span className="text-sm font-medium">{t.purchases.totalLabel}</span>
             <span className="text-lg font-bold">{formatCurrency(total)}</span>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t.common.cancel}</Button>
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-            {createMutation.isPending ? "Creating..." : "Create Purchase"}
+            {createMutation.isPending ? t.purchases.creating : t.purchases.createPurchase}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -311,6 +302,7 @@ function NewPurchaseDialog({
 export default function PurchasesPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | PurchaseStatus>("all");
@@ -319,6 +311,12 @@ export default function PurchasesPage() {
   const [viewPurchase, setViewPurchase] = useState<Purchase | null>(null);
 
   const resetPage = () => setPage(1);
+
+  const STATUS_CONFIG: Record<PurchaseStatus, { label: string; variant: "warning" | "success" | "destructive" }> = {
+    pending:   { label: t.purchases.statusPending,   variant: "warning" },
+    received:  { label: t.purchases.statusReceived,  variant: "success" },
+    cancelled: { label: t.purchases.statusCancelled, variant: "destructive" },
+  };
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -377,37 +375,26 @@ export default function PurchasesPage() {
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({
-      id,
-      status,
-    }: {
-      id: string;
-      status: PurchaseStatus;
-    }) => {
-      const { error } = await supabase
-        .from("purchases")
-        .update({ status })
-        .eq("id", id);
+    mutationFn: async ({ id, status }: { id: string; status: PurchaseStatus }) => {
+      const { error } = await supabase.from("purchases").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_, { status }) => {
       toast.success(
-        status === "received"
-          ? "Purchase marked as received. Stock will be updated."
-          : "Purchase cancelled."
+        status === "received" ? t.purchases.toast.received : t.purchases.toast.cancelled
       );
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
-    onError: (err: Error) => toast.error(err.message || "Failed to update status"),
+    onError: (err: Error) => toast.error(err.message || t.purchases.toast.statusError),
   });
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Purchases" description="Manage purchase orders and stock replenishment.">
+      <PageHeader title={t.purchases.title} description={t.purchases.description}>
         <Button size="sm" onClick={() => setNewPurchaseOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Purchase
+          <Plus className="me-2 h-4 w-4" />
+          {t.purchases.newPurchase}
         </Button>
       </PageHeader>
 
@@ -415,10 +402,10 @@ export default function PurchasesPage() {
       <div className="flex flex-wrap gap-3">
         <Select value={supplierFilter} onValueChange={(v) => { setSupplierFilter(v); resetPage(); }}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All Suppliers" />
+            <SelectValue placeholder={t.purchases.allSuppliers} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Suppliers</SelectItem>
+            <SelectItem value="all">{t.purchases.allSuppliers}</SelectItem>
             {suppliers.map((s) => (
               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
             ))}
@@ -427,13 +414,13 @@ export default function PurchasesPage() {
 
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as typeof statusFilter); resetPage(); }}>
           <SelectTrigger className="w-36">
-            <SelectValue placeholder="All Statuses" />
+            <SelectValue placeholder={t.purchases.allStatuses} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="received">Received</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t.purchases.allStatuses}</SelectItem>
+            <SelectItem value="pending">{t.purchases.statusPending}</SelectItem>
+            <SelectItem value="received">{t.purchases.statusReceived}</SelectItem>
+            <SelectItem value="cancelled">{t.purchases.statusCancelled}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -443,13 +430,13 @@ export default function PurchasesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead className="text-right">Items</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created By</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t.purchases.columns.date}</TableHead>
+              <TableHead>{t.purchases.columns.supplier}</TableHead>
+              <TableHead className="text-end">{t.purchases.columns.items}</TableHead>
+              <TableHead className="text-end">{t.purchases.columns.total}</TableHead>
+              <TableHead>{t.purchases.columns.status}</TableHead>
+              <TableHead>{t.purchases.columns.createdBy}</TableHead>
+              <TableHead className="text-end">{t.purchases.columns.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -459,7 +446,7 @@ export default function PurchasesPage() {
               <TableRow>
                 <TableCell colSpan={7} className="py-12 text-center">
                   <ShoppingBag className="mx-auto mb-2 h-8 w-8 text-[hsl(var(--muted-foreground))]" />
-                  <p className="text-[hsl(var(--muted-foreground))]">No purchases found</p>
+                  <p className="text-[hsl(var(--muted-foreground))]">{t.purchases.noFound}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -473,21 +460,21 @@ export default function PurchasesPage() {
                       {formatDateTime(purchase.created_at)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {purchase.supplier?.name ?? "Unknown"}
+                      {purchase.supplier?.name ?? t.purchases.unknownSupplier}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="text-end tabular-nums">
                       {purchase.items?.length ?? 0}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">
+                    <TableCell className="text-end tabular-nums font-medium">
                       {formatCurrency(purchase.total)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={cfg.variant}>{cfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-[hsl(var(--muted-foreground))]">
-                      {createdBy?.full_name ?? "System"}
+                      {createdBy?.full_name ?? t.purchases.system}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-end">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
@@ -507,8 +494,8 @@ export default function PurchasesPage() {
                               }
                               disabled={updateStatusMutation.isPending}
                             >
-                              <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                              Receive
+                              <CheckCircle2 className="me-1 h-3.5 w-3.5" />
+                              {t.purchases.receive}
                             </Button>
                             <Button
                               variant="ghost"
@@ -537,7 +524,7 @@ export default function PurchasesPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-[hsl(var(--muted-foreground))]">
           <span>
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+            {t.common.showing} {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} {t.common.of} {total}
           </span>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>

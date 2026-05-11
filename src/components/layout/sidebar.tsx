@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/utils";
 import { NAV_ITEMS, APP_NAME } from "@/lib/constants";
 import { useAuthStore } from "@/store/auth-store";
+import { useUIStore } from "@/store/ui-store";
+import { useT } from "@/lib/i18n";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // ─── Icon map ────────────────────────────────────────────────────────────────
@@ -94,7 +96,6 @@ function NavLeaf({ title, href, icon, collapsed }: NavLeafProps) {
 
   return (
     <Link
-    
       href={href}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
@@ -133,15 +134,15 @@ function NavGroup({ title, icon, children, collapsed }: NavGroupProps) {
     (c) => pathname === c.href || pathname.startsWith(c.href + "/")
   );
   const [open, setOpen] = useState(isChildActive);
+  const t = useT();
 
   if (collapsed) {
-    // In collapsed mode show each child as icon-only with tooltip via title attr
     return (
       <div className="space-y-0.5">
         {children.map((child) => (
           <NavLeaf
             key={child.href}
-            title={child.title}
+            title={t.nav[child.title] ?? child.title}
             href={child.href}
             icon={child.icon}
             collapsed
@@ -154,6 +155,7 @@ function NavGroup({ title, icon, children, collapsed }: NavGroupProps) {
   return (
     <div>
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
@@ -163,7 +165,7 @@ function NavGroup({ title, icon, children, collapsed }: NavGroupProps) {
         )}
       >
         <NavIcon name={icon} className="h-4 w-4 shrink-0" />
-        <span className="flex-1 truncate text-left">{title}</span>
+        <span className="flex-1 truncate text-start">{title}</span>
         <ChevronDown
           className={cn(
             "h-4 w-4 shrink-0 transition-transform duration-200",
@@ -173,11 +175,11 @@ function NavGroup({ title, icon, children, collapsed }: NavGroupProps) {
       </button>
 
       {open && (
-        <div className="ml-3 mt-0.5 space-y-0.5 border-l border-slate-700 pl-3">
+        <div className="ms-3 mt-0.5 space-y-0.5 border-s border-slate-700 ps-3">
           {children.map((child) => (
             <NavLeaf
               key={child.href}
-              title={child.title}
+              title={t.nav[child.title] ?? child.title}
               href={child.href}
               icon={child.icon}
               collapsed={false}
@@ -194,6 +196,8 @@ function NavGroup({ title, icon, children, collapsed }: NavGroupProps) {
 function SidebarContent({ collapsed, onToggle }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const lang = useUIStore((s) => s.lang);
+  const t = useT();
 
   const displayName = user?.profile?.full_name ?? user?.email ?? "User";
   const roleName = user?.role?.name ?? "Staff";
@@ -230,6 +234,7 @@ function SidebarContent({ collapsed, onToggle }: SidebarProps) {
         )}
 
         <button
+          type="button"
           onClick={onToggle}
           className={cn(
             "flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-white",
@@ -238,9 +243,9 @@ function SidebarContent({ collapsed, onToggle }: SidebarProps) {
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            lang === "ar" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            lang === "ar" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />
           )}
         </button>
       </div>
@@ -249,14 +254,13 @@ function SidebarContent({ collapsed, onToggle }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
-            // Permission check at group level
             if (item.permission && !hasPermission(item.permission)) return null;
 
             if ("children" in item && item.children) {
               return (
                 <NavGroup
                   key={item.title}
-                  title={item.title}
+                  title={t.nav[item.title] ?? item.title}
                   icon={item.icon}
                   children={item.children}
                   collapsed={collapsed}
@@ -268,7 +272,7 @@ function SidebarContent({ collapsed, onToggle }: SidebarProps) {
               return (
                 <NavLeaf
                   key={item.href}
-                  title={item.title}
+                  title={t.nav[item.title] ?? item.title}
                   href={item.href}
                   icon={item.icon}
                   collapsed={collapsed}

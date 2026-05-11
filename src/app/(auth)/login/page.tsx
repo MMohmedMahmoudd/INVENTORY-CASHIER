@@ -10,27 +10,33 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Please enter a valid email address"),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters"),
-  rememberMe: z.boolean().default(false),
-});
+function useLoginSchema() {
+  const t = useT();
+  return z.object({
+    email: z
+      .string()
+      .min(1, t.auth.emailRequired)
+      .email(t.auth.emailInvalid),
+    password: z
+      .string()
+      .min(6, t.auth.passwordMin),
+    rememberMe: z.boolean().default(false),
+  });
+}
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = { email: string; password: string; rememberMe: boolean };
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const t = useT();
+  const schema = useLoginSchema();
 
   const {
     register,
@@ -40,12 +46,8 @@ export default function LoginPage() {
     formState: { errors },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema) as any,
-    defaultValues: {
-      email: "",
-      password: "",
-      rememberMe: false,
-    },
+    resolver: zodResolver(schema) as any,
+    defaultValues: { email: "", password: "", rememberMe: false },
   });
 
   const rememberMe = watch("rememberMe");
@@ -76,22 +78,21 @@ export default function LoginPage() {
   return (
     <>
       <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t.auth.welcomeBack}</h1>
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-          Sign in to your account to continue
+          {t.auth.signInSubtitle}
         </p>
       </div>
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <form onSubmit={handleSubmit(onSubmit as any)} noValidate className="space-y-4">
-        {/* Email */}
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email address</Label>
+          <Label htmlFor="email">{t.auth.emailAddress}</Label>
           <Input
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t.auth.emailPlaceholder}
             disabled={isLoading}
             {...register("email")}
           />
@@ -102,15 +103,14 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t.auth.password}</Label>
             <Link
               href="/forgot-password"
               className="text-xs text-[hsl(var(--primary))] hover:underline"
             >
-              Forgot password?
+              {t.auth.forgotPassword}
             </Link>
           </div>
           <Input
@@ -128,7 +128,6 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Remember me */}
         <div className="flex items-center gap-2">
           <Checkbox
             id="rememberMe"
@@ -142,19 +141,18 @@ export default function LoginPage() {
             htmlFor="rememberMe"
             className="cursor-pointer font-normal text-[hsl(var(--muted-foreground))]"
           >
-            Remember me for 30 days
+            {t.auth.rememberMe}
           </Label>
         </div>
 
-        {/* Submit */}
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="animate-spin" />
-              Signing in…
+              {t.auth.signingIn}
             </>
           ) : (
-            "Sign in"
+            t.auth.signIn
           )}
         </Button>
       </form>

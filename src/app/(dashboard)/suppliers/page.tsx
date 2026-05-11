@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatDate } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Supplier } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ function SupplierDialog({
   isSaving: boolean;
 }) {
   const isEdit = !!supplier;
+  const t = useT();
 
   const {
     register,
@@ -80,39 +82,39 @@ function SupplierDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Supplier" : "Add Supplier"}</DialogTitle>
+          <DialogTitle>{isEdit ? t.suppliers.dialog.editTitle : t.suppliers.dialog.addTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSave)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="sup-name">Name *</Label>
-            <Input id="sup-name" placeholder="Supplier name" {...register("name")} />
+            <Label htmlFor="sup-name">{t.suppliers.dialog.nameLabel}</Label>
+            <Input id="sup-name" placeholder={t.suppliers.dialog.namePlaceholder} {...register("name")} />
             {errors.name && (
               <p className="text-xs text-[hsl(var(--destructive))]">{errors.name.message}</p>
             )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="sup-email">Email</Label>
+              <Label htmlFor="sup-email">{t.suppliers.dialog.emailLabel}</Label>
               <Input id="sup-email" type="email" placeholder="email@example.com" {...register("email")} />
               {errors.email && (
                 <p className="text-xs text-[hsl(var(--destructive))]">{errors.email.message}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="sup-phone">Phone</Label>
+              <Label htmlFor="sup-phone">{t.suppliers.dialog.phoneLabel}</Label>
               <Input id="sup-phone" type="tel" placeholder="+1 555 000 0000" {...register("phone")} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="sup-address">Address</Label>
-            <Textarea id="sup-address" rows={2} placeholder="Street, City, Country" {...register("address")} />
+            <Label htmlFor="sup-address">{t.suppliers.dialog.addressLabel}</Label>
+            <Textarea id="sup-address" rows={2} placeholder={t.suppliers.dialog.addressPlaceholder} {...register("address")} />
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Create"}
+              {isSaving ? t.common.saving : isEdit ? t.common.saveChanges : t.common.create}
             </Button>
           </DialogFooter>
         </form>
@@ -136,23 +138,24 @@ function DeleteDialog({
   onConfirm: () => void;
   isDeleting: boolean;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Supplier</DialogTitle>
+          <DialogTitle>{t.suppliers.deleteTitle}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          Are you sure you want to delete{" "}
-          <span className="font-semibold text-[hsl(var(--foreground))]">{supplier?.name}</span>?
-          Products linked to this supplier will be unassigned.
+          {t.suppliers.deleteMessage}{" "}
+          <span className="font-semibold text-[hsl(var(--foreground))]">{supplier?.name}</span>?{" "}
+          {t.suppliers.deleteWarning}
         </p>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? t.common.deleting : t.common.delete}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -165,6 +168,7 @@ function DeleteDialog({
 export default function SuppliersPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editTarget, setEditTarget] = React.useState<Supplier | null>(null);
@@ -200,12 +204,12 @@ export default function SuppliersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      toast.success(editTarget ? "Supplier updated" : "Supplier created");
+      toast.success(editTarget ? t.suppliers.toast.updated : t.suppliers.toast.created);
       setFormOpen(false);
       setEditTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to save supplier");
+      toast.error(err.message ?? t.suppliers.toast.saveError);
     },
   });
 
@@ -216,11 +220,11 @@ export default function SuppliersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
-      toast.success("Supplier deleted");
+      toast.success(t.suppliers.toast.deleted);
       setDeleteTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to delete supplier");
+      toast.error(err.message ?? t.suppliers.toast.deleteError);
     },
   });
 
@@ -230,14 +234,14 @@ export default function SuppliersPage() {
   const columns: ColumnDef<Supplier>[] = [
     {
       accessorKey: "name",
-      header: "Name",
+      header: t.suppliers.columns.name,
       cell: ({ getValue }) => (
         <span className="font-medium">{getValue() as string}</span>
       ),
     },
     {
       accessorKey: "email",
-      header: "Email",
+      header: t.suppliers.columns.email,
       cell: ({ getValue }) => {
         const v = getValue() as string | null;
         return v ? (
@@ -251,14 +255,14 @@ export default function SuppliersPage() {
     },
     {
       accessorKey: "phone",
-      header: "Phone",
+      header: t.suppliers.columns.phone,
       cell: ({ getValue }) => (
         <span className="text-sm">{(getValue() as string | null) ?? "—"}</span>
       ),
     },
     {
       accessorKey: "address",
-      header: "Address",
+      header: t.suppliers.columns.address,
       cell: ({ getValue }) => (
         <span className="max-w-[200px] truncate text-sm text-[hsl(var(--muted-foreground))]">
           {(getValue() as string | null) ?? "—"}
@@ -267,7 +271,7 @@ export default function SuppliersPage() {
     },
     {
       accessorKey: "created_at",
-      header: "Added",
+      header: t.suppliers.columns.added,
       cell: ({ getValue }) => (
         <span className="text-sm text-[hsl(var(--muted-foreground))]">
           {formatDate(getValue() as string)}
@@ -276,7 +280,7 @@ export default function SuppliersPage() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t.suppliers.columns.actions,
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
@@ -299,12 +303,12 @@ export default function SuppliersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Suppliers"
-        description="Manage your product suppliers and vendors."
+        title={t.suppliers.title}
+        description={t.suppliers.description}
         action={
           <Button onClick={openAdd}>
             <Plus className="h-4 w-4" />
-            Add Supplier
+            {t.suppliers.addSupplier}
           </Button>
         }
       />
@@ -313,9 +317,9 @@ export default function SuppliersPage() {
         columns={columns}
         data={suppliers}
         searchKey="name"
-        searchPlaceholder="Search suppliers..."
+        searchPlaceholder={t.suppliers.searchPlaceholder}
         loading={isLoading}
-        emptyMessage="No suppliers yet. Add your first supplier."
+        emptyMessage={t.suppliers.emptyMessage}
       />
 
       <SupplierDialog

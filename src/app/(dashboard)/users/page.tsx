@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth-store";
+import { useT } from "@/lib/i18n";
 import {
   inviteUser,
   updateUserRole,
@@ -91,6 +92,7 @@ function InviteDialog({
   roles: Role[];
   onSuccess: () => void;
 }) {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -102,14 +104,14 @@ function InviteDialog({
     setLoading(true);
     try {
       await inviteUser(email, roleId, fullName);
-      toast.success(`Invitation sent to ${email}`);
+      toast.success(`${t.users.toast.invited} ${email}`);
       setEmail("");
       setFullName("");
       setRoleId("");
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to invite user");
+      toast.error(err instanceof Error ? err.message : t.users.toast.inviteError);
     } finally {
       setLoading(false);
     }
@@ -121,16 +123,16 @@ function InviteDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite User
+            {t.users.inviteDialog.title}
           </DialogTitle>
           <DialogDescription>
-            Send an email invitation to a new team member.
+            {t.users.inviteDialog.description}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="invite-name">Full Name</Label>
+            <Label htmlFor="invite-name">{t.users.inviteDialog.fullName}</Label>
             <Input
               id="invite-name"
               placeholder="John Doe"
@@ -140,7 +142,7 @@ function InviteDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="invite-email">Email Address *</Label>
+            <Label htmlFor="invite-email">{t.users.inviteDialog.emailLabel}</Label>
             <Input
               id="invite-email"
               type="email"
@@ -152,10 +154,10 @@ function InviteDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="invite-role">Role *</Label>
+            <Label htmlFor="invite-role">{t.users.inviteDialog.roleLabel}</Label>
             <Select value={roleId} onValueChange={setRoleId} required>
               <SelectTrigger id="invite-role">
-                <SelectValue placeholder="Select role..." />
+                <SelectValue placeholder={t.users.inviteDialog.rolePlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {roles.map((r) => (
@@ -169,10 +171,10 @@ function InviteDialog({
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={loading || !email || !roleId}>
-              {loading ? "Sending..." : "Send Invitation"}
+              {loading ? t.users.inviteDialog.sending : t.users.inviteDialog.sendInvitation}
             </Button>
           </DialogFooter>
         </form>
@@ -194,6 +196,7 @@ function EditRoleDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const t = useT();
   const [roleId, setRoleId] = useState(user?.role_id ?? "");
   const [loading, setLoading] = useState(false);
 
@@ -206,11 +209,11 @@ function EditRoleDialog({
     setLoading(true);
     try {
       await updateUserRole(user.auth_user_id, roleId);
-      toast.success("Role updated");
+      toast.success(t.users.toast.roleUpdated);
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update role");
+      toast.error(err instanceof Error ? err.message : t.users.toast.roleError);
     } finally {
       setLoading(false);
     }
@@ -220,18 +223,18 @@ function EditRoleDialog({
     <Dialog open={!!user} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Edit User Role</DialogTitle>
+          <DialogTitle>{t.users.editRoleDialog.title}</DialogTitle>
           <DialogDescription>
-            Change the role for{" "}
+            {t.users.editRoleDialog.descriptionPrefix}{" "}
             <span className="font-medium">{user?.full_name || user?.email}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1.5">
-          <Label>Role</Label>
+          <Label>{t.users.editRoleDialog.roleLabel}</Label>
           <Select value={roleId} onValueChange={setRoleId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select role..." />
+              <SelectValue placeholder={t.users.editRoleDialog.rolePlaceholder} />
             </SelectTrigger>
             <SelectContent>
               {roles.map((r) => (
@@ -245,10 +248,10 @@ function EditRoleDialog({
 
         <DialogFooter className="pt-2">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button onClick={handleSave} disabled={loading || !roleId}>
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t.users.editRoleDialog.saving : t.common.saveChanges}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -267,6 +270,7 @@ function DeleteDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
@@ -274,11 +278,11 @@ function DeleteDialog({
     setLoading(true);
     try {
       await deleteUser(user.auth_user_id);
-      toast.success("User deleted");
+      toast.success(t.users.toast.deleted);
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+      toast.error(err instanceof Error ? err.message : t.users.toast.deleteError);
     } finally {
       setLoading(false);
     }
@@ -290,28 +294,27 @@ function DeleteDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <Trash2 className="h-5 w-5" />
-            Delete User
+            {t.users.deleteDialog.title}
           </DialogTitle>
           <DialogDescription>
-            This action cannot be undone. The user&apos;s account and all
-            associated data will be permanently deleted.
+            {t.users.deleteDialog.description}
           </DialogDescription>
         </DialogHeader>
 
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          Deleting: <strong>{user?.full_name || user?.email}</strong>
+          {t.users.deleteDialog.deletingPrefix} <strong>{user?.full_name || user?.email}</strong>
         </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
             disabled={loading}
           >
-            {loading ? "Deleting..." : "Delete User"}
+            {loading ? t.users.deleteDialog.deleting : t.users.deleteUser}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -325,22 +328,22 @@ export default function UsersPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const t = useT();
 
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
 
-  // Permission guard
   if (!hasPermission(PERMISSIONS.MANAGE_USERS)) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
         <AlertCircle className="mb-4 h-12 w-12 text-red-400" />
         <h2 className="text-xl font-semibold text-[hsl(var(--foreground))]">
-          Unauthorized
+          {t.users.unauthorized}
         </h2>
         <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-          You don&apos;t have permission to manage users.
+          {t.users.noPermission}
         </p>
       </div>
     );
@@ -359,7 +362,7 @@ export default function UsersPage() {
     },
   });
 
-  // Fetch users via server action (needs admin client)
+  // Fetch users via server action
   const {
     data: users = [],
     isLoading,
@@ -372,7 +375,6 @@ export default function UsersPage() {
     },
   });
 
-  // Toggle active mutation
   const toggleActive = useMutation({
     mutationFn: async ({
       authUserId,
@@ -385,14 +387,13 @@ export default function UsersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("User status updated");
+      toast.success(t.users.toast.statusUpdated);
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
+      toast.error(err instanceof Error ? err.message : t.users.toast.statusError);
     },
   });
 
-  // Filter
   const filtered = users.filter(
     (u) =>
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -407,26 +408,26 @@ export default function UsersPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-[hsl(var(--foreground))]">
             <Users className="h-6 w-6 text-blue-500" />
-            Users
+            {t.users.title}
           </h1>
           <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            Manage team members, roles, and access
+            {t.users.description}
           </p>
         </div>
         <Button onClick={() => setInviteOpen(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Invite User
+          <UserPlus className="me-2 h-4 w-4" />
+          {t.users.inviteUser}
         </Button>
       </div>
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+        <Search className="absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
         <Input
-          placeholder="Search users..."
+          placeholder={t.users.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="ps-9"
         />
       </div>
 
@@ -435,11 +436,11 @@ export default function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Active</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead>{t.users.columns.user}</TableHead>
+              <TableHead>{t.users.columns.role}</TableHead>
+              <TableHead>{t.users.columns.status}</TableHead>
+              <TableHead>{t.users.columns.lastActive}</TableHead>
+              <TableHead>{t.users.columns.joined}</TableHead>
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
@@ -469,7 +470,7 @@ export default function UsersPage() {
                   colSpan={6}
                   className="py-10 text-center text-[hsl(var(--muted-foreground))]"
                 >
-                  {search ? "No users match your search" : "No users found"}
+                  {search ? t.users.noMatch : t.users.noUsersFound}
                 </TableCell>
               </TableRow>
             ) : (
@@ -499,7 +500,7 @@ export default function UsersPage() {
                     {user.role ? (
                       <Badge variant="secondary">{user.role.name}</Badge>
                     ) : (
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">No role</span>
+                      <span className="text-xs text-[hsl(var(--muted-foreground))]">{t.users.noRole}</span>
                     )}
                   </TableCell>
 
@@ -512,14 +513,14 @@ export default function UsersPage() {
                           : "bg-gray-100 text-gray-500 hover:bg-gray-100"
                       }
                     >
-                      {user.is_active ? "Active" : "Inactive"}
+                      {user.is_active ? t.common.active : t.common.inactive}
                     </Badge>
                   </TableCell>
 
                   <TableCell className="text-sm text-[hsl(var(--muted-foreground))]">
                     {user.last_sign_in_at
                       ? formatDate(user.last_sign_in_at)
-                      : "Never"}
+                      : t.users.never}
                   </TableCell>
 
                   <TableCell className="text-sm text-[hsl(var(--muted-foreground))]">
@@ -535,7 +536,7 @@ export default function UsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setEditUser(user)}>
-                          Edit Role
+                          {t.users.editRole}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() =>
@@ -547,13 +548,13 @@ export default function UsersPage() {
                         >
                           {user.is_active ? (
                             <>
-                              <ShieldOff className="mr-2 h-4 w-4" />
-                              Deactivate
+                              <ShieldOff className="me-2 h-4 w-4" />
+                              {t.users.deactivate}
                             </>
                           ) : (
                             <>
-                              <Shield className="mr-2 h-4 w-4" />
-                              Activate
+                              <Shield className="me-2 h-4 w-4" />
+                              {t.users.activate}
                             </>
                           )}
                         </DropdownMenuItem>
@@ -562,8 +563,8 @@ export default function UsersPage() {
                           className="text-red-600 focus:text-red-600"
                           onClick={() => setDeleteTarget(user)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          <Trash2 className="me-2 h-4 w-4" />
+                          {t.common.delete}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

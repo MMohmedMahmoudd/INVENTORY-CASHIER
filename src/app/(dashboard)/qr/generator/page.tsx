@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,7 @@ function QRCard({
   onSelect: (id: string) => void;
   onDownload: (item: ProductWithQR) => void;
 }) {
+  const t = useT();
   const { product, qrDataUrl, generating } = item;
 
   return (
@@ -76,11 +78,10 @@ function QRCard({
           : "border-[hsl(var(--border))] hover:border-blue-300"
       )}
     >
-      {/* Select checkbox */}
       <button
         onClick={() => onSelect(product.id)}
-        className="absolute left-3 top-3 z-10 text-[hsl(var(--muted-foreground))] hover:text-blue-500"
-        aria-label={selected ? "Deselect" : "Select"}
+        className="absolute inset-s-3 top-3 z-10 text-[hsl(var(--muted-foreground))] hover:text-blue-500"
+        aria-label={selected ? t.qr.deselectAll : t.qr.selectAll}
       >
         {selected ? (
           <CheckSquare className="h-5 w-5 text-blue-500" />
@@ -89,7 +90,6 @@ function QRCard({
         )}
       </button>
 
-      {/* Product image placeholder */}
       <div className="mt-2 flex h-16 w-16 items-center justify-center rounded-lg bg-[hsl(var(--muted))]">
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -103,7 +103,6 @@ function QRCard({
         )}
       </div>
 
-      {/* Product info */}
       <div className="w-full text-center">
         <p
           className="truncate text-sm font-semibold text-[hsl(var(--foreground))]"
@@ -116,7 +115,6 @@ function QRCard({
         </p>
       </div>
 
-      {/* QR code */}
       <div className="flex h-32 w-32 items-center justify-center rounded-lg bg-white p-1 shadow-inner">
         {generating ? (
           <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--muted-foreground))]" />
@@ -132,7 +130,6 @@ function QRCard({
         )}
       </div>
 
-      {/* Download button */}
       <Button
         size="sm"
         variant="outline"
@@ -140,8 +137,8 @@ function QRCard({
         disabled={!qrDataUrl}
         onClick={() => onDownload(item)}
       >
-        <Download className="mr-1.5 h-3.5 w-3.5" />
-        Download PNG
+        <Download className="me-1.5 h-3.5 w-3.5" />
+        {t.qr.downloadPng}
       </Button>
     </div>
   );
@@ -151,13 +148,13 @@ function QRCard({
 
 export default function QRGeneratorPage() {
   const supabase = createClient();
+  const t = useT();
 
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [qrMap, setQrMap] = useState<Map<string, string>>(new Map());
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
 
-  // Fetch products
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products-qr"],
     queryFn: async () => {
@@ -171,14 +168,12 @@ export default function QRGeneratorPage() {
     },
   });
 
-  // Filtered products
   const filtered = products.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Generate QR codes for visible products
   const generateForProducts = useCallback(
     async (prods: Product[]) => {
       const toGenerate = prods.filter((p) => !qrMap.has(p.id));
@@ -217,7 +212,6 @@ export default function QRGeneratorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered.length, products.length]);
 
-  // Selection helpers
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -234,17 +228,15 @@ export default function QRGeneratorPage() {
   const allSelected =
     filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
 
-  // Download single
   const handleDownload = (item: ProductWithQR) => {
     if (!item.qrDataUrl) return;
     downloadQR(item.qrDataUrl, `qr-${item.product.sku}.png`);
   };
 
-  // Download selected as individual PNGs (sequential)
   const handleBulkDownload = async () => {
     const selected = filtered.filter((p) => selectedIds.has(p.id));
     if (selected.length === 0) {
-      toast.error("No products selected");
+      toast.error(t.qr.noSelected);
       return;
     }
     toast.info(`Downloading ${selected.length} QR codes...`);
@@ -255,14 +247,13 @@ export default function QRGeneratorPage() {
         await new Promise((r) => setTimeout(r, 120));
       }
     }
-    toast.success("Download complete");
+    toast.success(t.qr.downloadComplete);
   };
 
-  // Print selected
   const handlePrint = () => {
     const selected = filtered.filter((p) => selectedIds.has(p.id));
     if (selected.length === 0) {
-      toast.error("No products selected");
+      toast.error(t.qr.noSelected);
       return;
     }
 
@@ -306,7 +297,6 @@ export default function QRGeneratorPage() {
     }
   };
 
-  // Build display items
   const items: ProductWithQR[] = filtered.map((p) => ({
     product: p,
     qrDataUrl: qrMap.get(p.id) ?? null,
@@ -320,23 +310,23 @@ export default function QRGeneratorPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-[hsl(var(--foreground))]">
             <QrCode className="h-6 w-6 text-blue-500" />
-            QR Code Generator
+            {t.qr.generatorTitle}
           </h1>
           <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            Generate, download, and print QR codes for your products
+            {t.qr.generatorDesc}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">
-            {selectedIds.size} selected
+            {selectedIds.size} {t.qr.selected}
           </Badge>
           <Button
             variant="outline"
             size="sm"
             onClick={allSelected ? clearSelection : selectAll}
           >
-            {allSelected ? "Deselect All" : "Select All"}
+            {allSelected ? t.qr.deselectAll : t.qr.selectAll}
           </Button>
           <Button
             variant="outline"
@@ -344,34 +334,34 @@ export default function QRGeneratorPage() {
             onClick={handleBulkDownload}
             disabled={selectedIds.size === 0}
           >
-            <Download className="mr-1.5 h-4 w-4" />
-            Download Selected
+            <Download className="me-1.5 h-4 w-4" />
+            {t.qr.downloadSelected}
           </Button>
           <Button
             size="sm"
             onClick={handlePrint}
             disabled={selectedIds.size === 0}
           >
-            <Printer className="mr-1.5 h-4 w-4" />
-            Print Selected
+            <Printer className="me-1.5 h-4 w-4" />
+            {t.qr.printSelected}
           </Button>
         </div>
       </div>
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+        <Search className="absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
         <Input
-          placeholder="Search by name or SKU..."
+          placeholder={t.inventory.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="ps-9"
         />
       </div>
 
       {/* Stats row */}
       <p className="text-sm text-[hsl(var(--muted-foreground))]">
-        Showing {filtered.length} of {products.length} products
+        {t.qr.showing} {filtered.length} {t.qr.of} {products.length} {t.qr.products}
       </p>
 
       {/* Grid */}
@@ -390,7 +380,7 @@ export default function QRGeneratorPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-20 text-center">
           <QrCode className="mb-3 h-12 w-12 text-[hsl(var(--muted-foreground))]" />
           <p className="text-[hsl(var(--muted-foreground))]">
-            {search ? "No products match your search" : "No products found"}
+            {search ? t.qr.noMatch : t.qr.noProducts}
           </p>
         </div>
       ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Key,
   Plus,
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth-store";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,7 @@ function RoleFormDialog({
   onSuccess: () => void;
 }) {
   const supabase = createClient();
+  const t = useT();
   const [name, setName] = useState(role?.name ?? "");
   const [description, setDescription] = useState(role?.description ?? "");
   const [loading, setLoading] = useState(false);
@@ -82,18 +84,18 @@ function RoleFormDialog({
           .update({ name: name.trim(), description: description.trim() || null })
           .eq("id", role.id);
         if (error) throw error;
-        toast.success("Role updated");
+        toast.success(t.roles.toast.updated);
       } else {
         const { error } = await supabase
           .from("roles")
           .insert({ name: name.trim(), description: description.trim() || null });
         if (error) throw error;
-        toast.success("Role created");
+        toast.success(t.roles.toast.created);
       }
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Operation failed");
+      toast.error(err instanceof Error ? err.message : t.roles.toast.operationFailed);
     } finally {
       setLoading(false);
     }
@@ -105,21 +107,19 @@ function RoleFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            {role ? "Edit Role" : "Create Role"}
+            {role ? t.roles.formDialog.editTitle : t.roles.formDialog.createTitle}
           </DialogTitle>
           <DialogDescription>
-            {role
-              ? "Update the role's name and description."
-              : "Create a new role that can be assigned to users."}
+            {role ? t.roles.formDialog.editDesc : t.roles.formDialog.createDesc}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="role-name">Role Name *</Label>
+            <Label htmlFor="role-name">{t.roles.formDialog.roleName}</Label>
             <Input
               id="role-name"
-              placeholder="e.g. Cashier, Warehouse Manager"
+              placeholder={t.roles.formDialog.roleNamePlaceholder}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -127,10 +127,10 @@ function RoleFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="role-desc">Description</Label>
+            <Label htmlFor="role-desc">{t.roles.formDialog.descriptionLabel}</Label>
             <Textarea
               id="role-desc"
-              placeholder="What does this role do?"
+              placeholder={t.roles.formDialog.descriptionPlaceholder}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -139,10 +139,10 @@ function RoleFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={loading || !name.trim()}>
-              {loading ? "Saving..." : role ? "Save Changes" : "Create Role"}
+              {loading ? t.roles.formDialog.saving : role ? t.common.saveChanges : t.roles.createRole}
             </Button>
           </DialogFooter>
         </form>
@@ -163,6 +163,7 @@ function DeleteRoleDialog({
   onSuccess: () => void;
 }) {
   const supabase = createClient();
+  const t = useT();
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
@@ -171,11 +172,11 @@ function DeleteRoleDialog({
     try {
       const { error } = await supabase.from("roles").delete().eq("id", role.id);
       if (error) throw error;
-      toast.success(`Role "${role.name}" deleted`);
+      toast.success(`"${role.name}" ${t.common.delete}`);
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete role");
+      toast.error(err instanceof Error ? err.message : t.roles.toast.deleteError);
     } finally {
       setLoading(false);
     }
@@ -187,27 +188,26 @@ function DeleteRoleDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <Trash2 className="h-5 w-5" />
-            Delete Role
+            {t.roles.deleteDialog.title}
           </DialogTitle>
           <DialogDescription>
-            This will permanently delete the role. Users assigned to this role
-            will lose their role assignment.
+            {t.roles.deleteDialog.description}
           </DialogDescription>
         </DialogHeader>
 
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          Deleting: <strong>{role?.name}</strong>
+          {t.roles.deleteDialog.deletingPrefix} <strong>{role?.name}</strong>
           {role && role.permissionCount > 0 && (
-            <> ({role.permissionCount} permissions will be removed)</>
+            <> ({role.permissionCount} {t.roles.deleteDialog.permissionsWillBeRemoved})</>
           )}
         </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-            {loading ? "Deleting..." : "Delete Role"}
+            {loading ? t.roles.deleteDialog.deleting : t.roles.deleteDialog.deleteRole}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -226,6 +226,7 @@ function RoleCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const isProtected = PROTECTED_ROLES.includes(role.name.toLowerCase());
 
   return (
@@ -241,7 +242,7 @@ function RoleCard({
                 {role.name}
               </h3>
               {isProtected && (
-                <Badge variant="secondary" className="text-xs">System</Badge>
+                <Badge variant="secondary" className="text-xs">{t.roles.system}</Badge>
               )}
             </div>
             {role.description && (
@@ -260,8 +261,8 @@ function RoleCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onEdit}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
+              <Pencil className="me-2 h-4 w-4" />
+              {t.common.edit}
             </DropdownMenuItem>
             {!isProtected && (
               <>
@@ -270,8 +271,8 @@ function RoleCard({
                   className="text-red-600 focus:text-red-600"
                   onClick={onDelete}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  <Trash2 className="me-2 h-4 w-4" />
+                  {t.common.delete}
                 </DropdownMenuItem>
               </>
             )}
@@ -279,13 +280,11 @@ function RoleCard({
         </DropdownMenu>
       </div>
 
-      {/* Permission count */}
       <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
         <Key className="h-3.5 w-3.5" />
-        <span>{role.permissionCount} permissions granted</span>
+        <span>{role.permissionCount} {t.roles.permissionsGranted}</span>
       </div>
 
-      {/* Permission badges */}
       {role.permissions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {role.permissions.slice(0, 6).map((p) => (
@@ -299,7 +298,7 @@ function RoleCard({
           ))}
           {role.permissions.length > 6 && (
             <Badge variant="secondary" className="text-xs">
-              +{role.permissions.length - 6} more
+              +{role.permissions.length - 6}
             </Badge>
           )}
         </div>
@@ -314,6 +313,7 @@ export default function RolesPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const t = useT();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleWithCounts | null>(null);
@@ -324,10 +324,10 @@ export default function RolesPage() {
       <div className="flex flex-col items-center justify-center py-32 text-center">
         <AlertCircle className="mb-4 h-12 w-12 text-red-400" />
         <h2 className="text-xl font-semibold text-[hsl(var(--foreground))]">
-          Unauthorized
+          {t.roles.unauthorized}
         </h2>
         <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-          You don&apos;t have permission to manage roles.
+          {t.roles.noPermission}
         </p>
       </div>
     );
@@ -371,15 +371,15 @@ export default function RolesPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-[hsl(var(--foreground))]">
             <Key className="h-6 w-6 text-blue-500" />
-            Roles
+            {t.roles.title}
           </h1>
           <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            Define access roles that can be assigned to users
+            {t.roles.description}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Role
+          <Plus className="me-2 h-4 w-4" />
+          {t.roles.createRole}
         </Button>
       </div>
 
@@ -407,13 +407,13 @@ export default function RolesPage() {
       ) : roles.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-20 text-center">
           <Key className="mb-3 h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-          <p className="text-[hsl(var(--muted-foreground))]">No roles yet</p>
+          <p className="text-[hsl(var(--muted-foreground))]">{t.roles.noRolesYet}</p>
           <Button
             className="mt-4"
             variant="outline"
             onClick={() => setCreateOpen(true)}
           >
-            Create your first role
+            {t.roles.createFirstRole}
           </Button>
         </div>
       ) : (

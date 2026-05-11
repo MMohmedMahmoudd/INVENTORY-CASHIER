@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { useUIStore } from "@/store/ui-store";
 import { useAuthStore } from "@/store/auth-store";
+
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { CommandPalette } from "@/components/layout/command-palette";
@@ -31,6 +32,7 @@ export default function DashboardLayout({
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleCollapsed);
+  const lang = useUIStore((s) => s.lang);
 
   // Auth guard — the middleware handles the redirect server-side, but this
   // covers the client-side case (e.g. after a store clear).
@@ -67,7 +69,7 @@ export default function DashboardLayout({
 
       {/* ── Mobile sidebar (Sheet/Drawer) ── */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <Sidebar
             collapsed={false}

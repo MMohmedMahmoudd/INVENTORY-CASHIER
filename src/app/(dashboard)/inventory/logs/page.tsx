@@ -6,6 +6,7 @@ import { Search, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { PageHeader } from "@/components/shared/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,17 +33,6 @@ import type { InventoryTransaction, InventoryTransactionType, Product } from "@/
 
 const PAGE_SIZE = 20;
 
-const TYPE_CONFIG: Record<
-  InventoryTransactionType,
-  { label: string; variant: "default" | "secondary" | "success" | "warning" | "destructive" | "outline" }
-> = {
-  purchase: { label: "Purchase", variant: "success" },
-  sale: { label: "Sale", variant: "default" },
-  adjustment: { label: "Adjustment", variant: "warning" },
-  return: { label: "Return", variant: "secondary" },
-  transfer: { label: "Transfer", variant: "outline" },
-};
-
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function TableSkeleton() {
@@ -63,6 +53,18 @@ function TableSkeleton() {
 
 export default function InventoryLogsPage() {
   const supabase = createClient();
+  const t = useT();
+
+  const TYPE_CONFIG: Record<
+    InventoryTransactionType,
+    { label: string; variant: "default" | "secondary" | "success" | "warning" | "destructive" | "outline" }
+  > = {
+    purchase: { label: t.inventoryLogs.types.purchase, variant: "success" },
+    sale: { label: t.inventoryLogs.types.sale, variant: "default" },
+    adjustment: { label: t.inventoryLogs.types.adjustment, variant: "warning" },
+    return: { label: t.inventoryLogs.types.return, variant: "secondary" },
+    transfer: { label: t.inventoryLogs.types.transfer, variant: "outline" },
+  };
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -119,7 +121,6 @@ export default function InventoryLogsPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  // Filter by product name/sku client-side for search
   const filtered = search
     ? rows.filter(
         (r) =>
@@ -133,17 +134,17 @@ export default function InventoryLogsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Inventory Logs"
-        description="Full audit trail of all stock movements."
+        title={t.inventoryLogs.title}
+        description={t.inventoryLogs.description}
       />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+        <div className="relative flex-1 min-w-45">
+          <Search className="absolute inset-s-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <Input
-            className="pl-8"
-            placeholder="Search product..."
+            className="ps-8"
+            placeholder={t.inventoryLogs.searchPlaceholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
           />
@@ -154,10 +155,10 @@ export default function InventoryLogsPage() {
           onValueChange={(v) => { setProductFilter(v); resetPage(); }}
         >
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All Products" />
+            <SelectValue placeholder={t.inventoryLogs.allProducts} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Products</SelectItem>
+            <SelectItem value="all">{t.inventoryLogs.allProducts}</SelectItem>
             {products.map((p) => (
               <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
             ))}
@@ -169,15 +170,15 @@ export default function InventoryLogsPage() {
           onValueChange={(v) => { setTypeFilter(v as typeof typeFilter); resetPage(); }}
         >
           <SelectTrigger className="w-36">
-            <SelectValue placeholder="All Types" />
+            <SelectValue placeholder={t.inventoryLogs.allTypes} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="purchase">Purchase</SelectItem>
-            <SelectItem value="sale">Sale</SelectItem>
-            <SelectItem value="adjustment">Adjustment</SelectItem>
-            <SelectItem value="return">Return</SelectItem>
-            <SelectItem value="transfer">Transfer</SelectItem>
+            <SelectItem value="all">{t.inventoryLogs.allTypes}</SelectItem>
+            <SelectItem value="purchase">{t.inventoryLogs.types.purchase}</SelectItem>
+            <SelectItem value="sale">{t.inventoryLogs.types.sale}</SelectItem>
+            <SelectItem value="adjustment">{t.inventoryLogs.types.adjustment}</SelectItem>
+            <SelectItem value="return">{t.inventoryLogs.types.return}</SelectItem>
+            <SelectItem value="transfer">{t.inventoryLogs.types.transfer}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -186,14 +187,14 @@ export default function InventoryLogsPage() {
           className="w-36"
           value={dateFrom}
           onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-          title="From date"
+          title={t.activityLogs.fromDate}
         />
         <Input
           type="date"
           className="w-36"
           value={dateTo}
           onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-          title="To date"
+          title={t.activityLogs.toDate}
         />
       </div>
 
@@ -202,14 +203,14 @@ export default function InventoryLogsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Qty Change</TableHead>
-              <TableHead className="text-right">Previous</TableHead>
-              <TableHead className="text-right">New Stock</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Created By</TableHead>
+              <TableHead>{t.inventoryLogs.columns.date}</TableHead>
+              <TableHead>{t.inventoryLogs.columns.product}</TableHead>
+              <TableHead>{t.inventoryLogs.columns.type}</TableHead>
+              <TableHead className="text-end">{t.inventoryLogs.columns.qtyChange}</TableHead>
+              <TableHead className="text-end">{t.inventoryLogs.columns.previous}</TableHead>
+              <TableHead className="text-end">{t.inventoryLogs.columns.newStock}</TableHead>
+              <TableHead>{t.inventoryLogs.columns.reference}</TableHead>
+              <TableHead>{t.inventoryLogs.columns.createdBy}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -219,7 +220,7 @@ export default function InventoryLogsPage() {
               <TableRow>
                 <TableCell colSpan={8} className="py-12 text-center">
                   <ClipboardList className="mx-auto mb-2 h-8 w-8 text-[hsl(var(--muted-foreground))]" />
-                  <p className="text-[hsl(var(--muted-foreground))]">No transactions found</p>
+                  <p className="text-[hsl(var(--muted-foreground))]">{t.inventoryLogs.noTransactions}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -240,7 +241,7 @@ export default function InventoryLogsPage() {
                     <TableCell>
                       <Badge variant={cfg.variant}>{cfg.label}</Badge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="text-end tabular-nums">
                       <span
                         className={
                           isPositive ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"
@@ -249,20 +250,20 @@ export default function InventoryLogsPage() {
                         {isPositive ? "+" : ""}{tx.quantity}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-[hsl(var(--muted-foreground))]">
+                    <TableCell className="text-end tabular-nums text-[hsl(var(--muted-foreground))]">
                       {tx.previous_stock}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">
+                    <TableCell className="text-end tabular-nums font-medium">
                       {tx.new_stock}
                     </TableCell>
                     <TableCell className="text-xs text-[hsl(var(--muted-foreground))]">
                       {tx.reference_type ?? "—"}
                       {tx.reference_id ? (
-                        <span className="ml-1 font-mono">#{tx.reference_id.slice(0, 8)}</span>
+                        <span className="ms-1 font-mono">#{tx.reference_id.slice(0, 8)}</span>
                       ) : null}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {(tx as InventoryTransaction & { user?: { full_name?: string } }).user?.full_name ?? "System"}
+                      {(tx as InventoryTransaction & { user?: { full_name?: string } }).user?.full_name ?? t.inventoryLogs.system}
                     </TableCell>
                   </TableRow>
                 );
@@ -276,7 +277,7 @@ export default function InventoryLogsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-[hsl(var(--muted-foreground))]">
           <span>
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+            {t.common.showing} {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} {t.common.of} {total}
           </span>
           <div className="flex items-center gap-2">
             <Button

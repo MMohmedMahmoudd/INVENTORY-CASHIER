@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Settings,
@@ -15,6 +15,8 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth-store";
+import { useUIStore } from "@/store/ui-store";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -141,7 +143,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
-      <Label htmlFor={htmlFor} className="min-w-[180px] text-sm text-[hsl(var(--muted-foreground))]">
+      <Label htmlFor={htmlFor} className="min-w-45 text-sm text-[hsl(var(--muted-foreground))]">
         {label}
       </Label>
       <div className="flex-1">{children}</div>
@@ -155,6 +157,9 @@ export default function SettingsPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const setLang = useUIStore((s) => s.setLang);
+  const setCurrency = useUIStore((s) => s.setCurrency);
+  const t = useT();
 
   const [settings, setSettings] = useState<AllSettings>(DEFAULTS);
 
@@ -163,16 +168,15 @@ export default function SettingsPage() {
       <div className="flex flex-col items-center justify-center py-32 text-center">
         <AlertCircle className="mb-4 h-12 w-12 text-red-400" />
         <h2 className="text-xl font-semibold text-[hsl(var(--foreground))]">
-          Unauthorized
+          {t.common.unauthorized}
         </h2>
         <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-          You don&apos;t have permission to manage settings.
+          {t.common.noPermission}
         </p>
       </div>
     );
   }
 
-  // Fetch settings
   const { isLoading } = useQuery({
     queryKey: ["app-settings"],
     queryFn: async () => {
@@ -182,11 +186,17 @@ export default function SettingsPage() {
       if (error) throw error;
       const parsed = parseSettings(data ?? []);
       setSettings(parsed);
+      // Sync language and currency into store on load
+      if (parsed.general.language === "en" || parsed.general.language === "ar") {
+        setLang(parsed.general.language);
+      }
+      if (parsed.general.currency) {
+        setCurrency(parsed.general.currency);
+      }
       return parsed;
     },
   });
 
-  // Save mutation
   const saveMutation = useMutation({
     mutationFn: async (tab: keyof AllSettings) => {
       const { error } = await supabase
@@ -196,10 +206,10 @@ export default function SettingsPage() {
     },
     onSuccess: (_, tab) => {
       queryClient.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success(`${tab.charAt(0).toUpperCase() + tab.slice(1)} settings saved`);
+      toast.success(`${tab.charAt(0).toUpperCase() + tab.slice(1)} ${t.settings.savedSuccess}`);
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to save settings");
+      toast.error(err instanceof Error ? err.message : t.settings.saveError);
     },
   });
 
@@ -221,10 +231,10 @@ export default function SettingsPage() {
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-[hsl(var(--foreground))]">
           <Settings className="h-6 w-6 text-blue-500" />
-          Settings
+          {t.settings.title}
         </h1>
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-          Configure your store preferences and system defaults
+          {t.settings.description}
         </p>
       </div>
 
@@ -232,26 +242,26 @@ export default function SettingsPage() {
         <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="general" className="flex items-center gap-1.5">
             <Store className="h-3.5 w-3.5" />
-            General
+            {t.settings.tabs.general}
           </TabsTrigger>
           <TabsTrigger value="pos" className="flex items-center gap-1.5">
             <Monitor className="h-3.5 w-3.5" />
-            POS
+            {t.settings.tabs.pos}
           </TabsTrigger>
           <TabsTrigger value="inventory" className="flex items-center gap-1.5">
             <Package className="h-3.5 w-3.5" />
-            Inventory
+            {t.settings.tabs.inventory}
           </TabsTrigger>
           <TabsTrigger value="receipt" className="flex items-center gap-1.5">
             <Receipt className="h-3.5 w-3.5" />
-            Receipt
+            {t.settings.tabs.receipt}
           </TabsTrigger>
         </TabsList>
 
         {/* ── General ── */}
         <TabsContent value="general" className="mt-6 space-y-6">
-          <SettingSection title="Store Information">
-            <Field label="Store Name" htmlFor="store-name">
+          <SettingSection title={t.settings.general.sectionTitle}>
+            <Field label={t.settings.general.storeName} htmlFor="store-name">
               <Input
                 id="store-name"
                 value={settings.general.store_name}
@@ -260,10 +270,10 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field label="Currency" htmlFor="currency">
+            <Field label={t.settings.general.currency} htmlFor="currency">
               <Select
                 value={settings.general.currency}
-                onValueChange={(v) => updateGeneral({ currency: v })}
+                onValueChange={(v) => { updateGeneral({ currency: v }); setCurrency(v); }}
                 disabled={isLoading}
               >
                 <SelectTrigger id="currency">
@@ -283,7 +293,7 @@ export default function SettingsPage() {
               </Select>
             </Field>
 
-            <Field label="Timezone" htmlFor="timezone">
+            <Field label={t.settings.general.timezone} htmlFor="timezone">
               <Select
                 value={settings.general.timezone}
                 onValueChange={(v) => updateGeneral({ timezone: v })}
@@ -307,21 +317,21 @@ export default function SettingsPage() {
               </Select>
             </Field>
 
-            <Field label="Language" htmlFor="language">
+            <Field label={t.settings.general.language} htmlFor="language">
               <Select
                 value={settings.general.language}
-                onValueChange={(v) => updateGeneral({ language: v })}
+                onValueChange={(v) => {
+                  updateGeneral({ language: v });
+                  if (v === "en" || v === "ar") setLang(v);
+                }}
                 disabled={isLoading}
               >
                 <SelectTrigger id="language">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ar">Arabic</SelectItem>
-                  <SelectItem value="fr">French</SelectItem>
-                  <SelectItem value="es">Spanish</SelectItem>
-                  <SelectItem value="de">German</SelectItem>
+                  <SelectItem value="en">{t.settings.general.english}</SelectItem>
+                  <SelectItem value="ar">{t.settings.general.arabic}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -332,16 +342,16 @@ export default function SettingsPage() {
               onClick={() => saveMutation.mutate("general")}
               disabled={saveMutation.isPending}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? "Saving..." : "Save General Settings"}
+              <Save className="me-2 h-4 w-4" />
+              {saveMutation.isPending ? t.common.saving : t.settings.general.saveBtn}
             </Button>
           </div>
         </TabsContent>
 
         {/* ── POS ── */}
         <TabsContent value="pos" className="mt-6 space-y-6">
-          <SettingSection title="Tax & Discounts">
-            <Field label="Tax Rate (%)" htmlFor="tax-rate">
+          <SettingSection title={t.settings.pos.sectionTitle}>
+            <Field label={t.settings.pos.taxRate} htmlFor="tax-rate">
               <Input
                 id="tax-rate"
                 type="number"
@@ -356,7 +366,7 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field label="Max Discount (%)" htmlFor="max-discount">
+            <Field label={t.settings.pos.maxDiscount} htmlFor="max-discount">
               <Input
                 id="max-discount"
                 type="number"
@@ -374,8 +384,8 @@ export default function SettingsPage() {
             </Field>
           </SettingSection>
 
-          <SettingSection title="Receipt">
-            <Field label="Receipt Footer" htmlFor="receipt-footer">
+          <SettingSection title={t.settings.pos.receiptSection}>
+            <Field label={t.settings.pos.receiptFooter} htmlFor="receipt-footer">
               <Textarea
                 id="receipt-footer"
                 rows={3}
@@ -384,7 +394,7 @@ export default function SettingsPage() {
                   updatePOS({ receipt_footer: e.target.value })
                 }
                 disabled={isLoading}
-                placeholder="Message shown at the bottom of receipts"
+                placeholder={t.settings.pos.receiptFooterPlaceholder}
               />
             </Field>
           </SettingSection>
@@ -394,16 +404,16 @@ export default function SettingsPage() {
               onClick={() => saveMutation.mutate("pos")}
               disabled={saveMutation.isPending}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? "Saving..." : "Save POS Settings"}
+              <Save className="me-2 h-4 w-4" />
+              {saveMutation.isPending ? t.common.saving : t.settings.pos.saveBtn}
             </Button>
           </div>
         </TabsContent>
 
         {/* ── Inventory ── */}
         <TabsContent value="inventory" className="mt-6 space-y-6">
-          <SettingSection title="Stock Alerts">
-            <Field label="Low Stock Alert Threshold" htmlFor="low-stock">
+          <SettingSection title={t.settings.inventory.alertSection}>
+            <Field label={t.settings.inventory.lowStockThreshold} htmlFor="low-stock">
               <Input
                 id="low-stock"
                 type="number"
@@ -417,13 +427,13 @@ export default function SettingsPage() {
                 disabled={isLoading}
               />
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                Show alert when stock falls to or below this quantity
+                {t.settings.inventory.lowStockHelp}
               </p>
             </Field>
           </SettingSection>
 
-          <SettingSection title="Defaults">
-            <Field label="Default Unit" htmlFor="default-unit">
+          <SettingSection title={t.settings.inventory.defaultsSection}>
+            <Field label={t.settings.inventory.defaultUnit} htmlFor="default-unit">
               <Select
                 value={settings.inventory.default_unit}
                 onValueChange={(v) => updateInventory({ default_unit: v })}
@@ -448,16 +458,16 @@ export default function SettingsPage() {
               onClick={() => saveMutation.mutate("inventory")}
               disabled={saveMutation.isPending}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? "Saving..." : "Save Inventory Settings"}
+              <Save className="me-2 h-4 w-4" />
+              {saveMutation.isPending ? t.common.saving : t.settings.inventory.saveBtn}
             </Button>
           </div>
         </TabsContent>
 
         {/* ── Receipt ── */}
         <TabsContent value="receipt" className="mt-6 space-y-6">
-          <SettingSection title="Receipt Display Options">
-            <Field label="Show Logo">
+          <SettingSection title={t.settings.receipt.sectionTitle}>
+            <Field label={t.settings.receipt.showLogo}>
               <div className="flex items-center gap-3">
                 <Switch
                   id="show-logo"
@@ -467,13 +477,13 @@ export default function SettingsPage() {
                 />
                 <Label htmlFor="show-logo" className="text-sm font-normal text-[hsl(var(--foreground))]">
                   {settings.receipt.show_logo
-                    ? "Logo visible on receipt"
-                    : "Logo hidden"}
+                    ? t.settings.receipt.logoVisible
+                    : t.settings.receipt.logoHidden}
                 </Label>
               </div>
             </Field>
 
-            <Field label="Show Barcode">
+            <Field label={t.settings.receipt.showBarcode}>
               <div className="flex items-center gap-3">
                 <Switch
                   id="show-barcode"
@@ -483,13 +493,13 @@ export default function SettingsPage() {
                 />
                 <Label htmlFor="show-barcode" className="text-sm font-normal text-[hsl(var(--foreground))]">
                   {settings.receipt.show_barcode
-                    ? "Barcode visible on receipt"
-                    : "Barcode hidden"}
+                    ? t.settings.receipt.barcodeVisible
+                    : t.settings.receipt.barcodeHidden}
                 </Label>
               </div>
             </Field>
 
-            <Field label="Footer Text" htmlFor="footer-text">
+            <Field label={t.settings.receipt.footerText} htmlFor="footer-text">
               <Textarea
                 id="footer-text"
                 rows={3}
@@ -498,7 +508,7 @@ export default function SettingsPage() {
                   updateReceipt({ footer_text: e.target.value })
                 }
                 disabled={isLoading}
-                placeholder="Footer message printed on receipts"
+                placeholder={t.settings.receipt.footerPlaceholder}
               />
             </Field>
           </SettingSection>
@@ -508,8 +518,8 @@ export default function SettingsPage() {
               onClick={() => saveMutation.mutate("receipt")}
               disabled={saveMutation.isPending}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? "Saving..." : "Save Receipt Settings"}
+              <Save className="me-2 h-4 w-4" />
+              {saveMutation.isPending ? t.common.saving : t.settings.receipt.saveBtn}
             </Button>
           </div>
         </TabsContent>

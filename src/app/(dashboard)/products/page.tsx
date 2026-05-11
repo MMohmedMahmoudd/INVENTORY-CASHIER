@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, getStockStatus } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Product, Category } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -34,28 +35,28 @@ import { DataTable } from "@/components/shared/data-table";
 
 // ─── Stock Status Badge ───────────────────────────────────────────────────────
 
-const stockStatusConfig = {
-  good: { label: "In Stock", variant: "success" as const },
-  low: { label: "Low Stock", variant: "warning" as const },
-  critical: { label: "Critical", variant: "destructive" as const },
-  out: { label: "Out of Stock", variant: "destructive" as const },
-} as const;
-
 function StockBadge({ quantity, minimum }: { quantity: number; minimum: number }) {
+  const t = useT();
   const status = getStockStatus(quantity, minimum);
-  const config = stockStatusConfig[status];
+  const config = {
+    good: { label: t.products.filters.inStock, variant: "success" as const },
+    low: { label: t.products.filters.lowStock, variant: "warning" as const },
+    critical: { label: t.products.filters.critical, variant: "destructive" as const },
+    out: { label: t.products.filters.outOfStock, variant: "destructive" as const },
+  }[status];
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
 // ─── QR Dialog ───────────────────────────────────────────────────────────────
 
 function QRDialog({ product, open, onClose }: { product: Product | null; open: boolean; onClose: () => void }) {
+  const t = useT();
   if (!product) return null;
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-xs text-center">
         <DialogHeader>
-          <DialogTitle>QR Code</DialogTitle>
+          <DialogTitle>{t.products.dialogs.qrTitle}</DialogTitle>
           <DialogDescription>{product.name}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-3 py-2">
@@ -95,25 +96,26 @@ function DeleteDialog({
   onConfirm: () => void;
   isDeleting: boolean;
 }) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Product</DialogTitle>
+          <DialogTitle>{t.products.dialogs.deleteTitle}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete{" "}
+            {t.products.dialogs.deleteDescription}{" "}
             <span className="font-semibold text-[hsl(var(--foreground))]">
               {product?.name}
             </span>
-            ? This action cannot be undone.
+            ? {t.products.dialogs.deleteWarning}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? t.common.deleting : t.common.delete}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -126,6 +128,7 @@ function DeleteDialog({
 export default function ProductsPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
   const [stockFilter, setStockFilter] = React.useState<string>("all");
@@ -187,19 +190,18 @@ export default function ProductsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Product deleted successfully");
+      toast.success(t.products.toast.deleted);
       setDeleteTarget(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to delete product");
+      toast.error(err.message ?? t.products.toast.deleteError);
     },
   });
 
-  // ── Columns ──
   const columns: ColumnDef<Product>[] = [
     {
       id: "image",
-      header: "Image",
+      header: t.products.columns.image,
       enableSorting: false,
       cell: ({ row }) => {
         const p = row.original;
@@ -220,7 +222,7 @@ export default function ProductsPage() {
     },
     {
       accessorKey: "name",
-      header: "Name",
+      header: t.products.columns.name,
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.name}</p>
@@ -230,7 +232,7 @@ export default function ProductsPage() {
     },
     {
       id: "category",
-      header: "Category",
+      header: t.products.columns.category,
       accessorFn: (row) => row.category?.name ?? "—",
       cell: ({ getValue }) => (
         <span className="text-sm">{getValue() as string}</span>
@@ -238,7 +240,7 @@ export default function ProductsPage() {
     },
     {
       id: "supplier",
-      header: "Supplier",
+      header: t.products.columns.supplier,
       accessorFn: (row) => row.supplier?.name ?? "—",
       cell: ({ getValue }) => (
         <span className="text-sm">{getValue() as string}</span>
@@ -246,7 +248,7 @@ export default function ProductsPage() {
     },
     {
       accessorKey: "stock_quantity",
-      header: "Stock",
+      header: t.products.columns.stock,
       cell: ({ row }) => (
         <div className="flex flex-col gap-1">
           <span className="font-medium tabular-nums">
@@ -261,7 +263,7 @@ export default function ProductsPage() {
     },
     {
       accessorKey: "selling_price",
-      header: "Price",
+      header: t.products.columns.price,
       cell: ({ getValue }) => (
         <span className="font-medium tabular-nums">
           {formatCurrency(getValue() as number)}
@@ -270,17 +272,17 @@ export default function ProductsPage() {
     },
     {
       accessorKey: "is_active",
-      header: "Status",
+      header: t.products.columns.status,
       cell: ({ getValue }) =>
         getValue() ? (
-          <Badge variant="success">Active</Badge>
+          <Badge variant="success">{t.common.active}</Badge>
         ) : (
-          <Badge variant="secondary">Inactive</Badge>
+          <Badge variant="secondary">{t.common.inactive}</Badge>
         ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t.products.columns.actions,
       enableSorting: false,
       cell: ({ row }) => {
         const p = row.original;
@@ -318,9 +320,9 @@ export default function ProductsPage() {
   if (isError) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
-        <p className="text-[hsl(var(--destructive))]">Failed to load products.</p>
+        <p className="text-[hsl(var(--destructive))]">{t.products.failedToLoad}</p>
         <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["products"] })}>
-          Retry
+          {t.common.retry}
         </Button>
       </div>
     );
@@ -329,13 +331,13 @@ export default function ProductsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Products"
-        description="Manage your product catalog, pricing, and stock levels."
+        title={t.products.title}
+        description={t.products.description}
         action={
           <Button asChild>
             <Link href="/products/add">
               <Plus className="h-4 w-4" />
-              Add Product
+              {t.products.addProduct}
             </Link>
           </Button>
         }
@@ -345,18 +347,17 @@ export default function ProductsPage() {
         columns={columns}
         data={products}
         searchKey="name"
-        searchPlaceholder="Search products..."
+        searchPlaceholder={t.products.searchPlaceholder}
         loading={isLoading}
-        emptyMessage="No products found. Add your first product to get started."
+        emptyMessage={t.products.emptyMessage}
         toolbar={
           <>
-            {/* Category filter */}
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="h-9 w-40 text-sm">
-                <SelectValue placeholder="All Categories" />
+                <SelectValue placeholder={t.products.filters.allCategories} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">{t.products.filters.allCategories}</SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -365,17 +366,16 @@ export default function ProductsPage() {
               </SelectContent>
             </Select>
 
-            {/* Stock status filter */}
             <Select value={stockFilter} onValueChange={setStockFilter}>
               <SelectTrigger className="h-9 w-36 text-sm">
-                <SelectValue placeholder="All Stock" />
+                <SelectValue placeholder={t.products.filters.allStock} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Stock</SelectItem>
-                <SelectItem value="good">In Stock</SelectItem>
-                <SelectItem value="low">Low Stock</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="out">Out of Stock</SelectItem>
+                <SelectItem value="all">{t.products.filters.allStock}</SelectItem>
+                <SelectItem value="good">{t.products.filters.inStock}</SelectItem>
+                <SelectItem value="low">{t.products.filters.lowStock}</SelectItem>
+                <SelectItem value="critical">{t.products.filters.critical}</SelectItem>
+                <SelectItem value="out">{t.products.filters.outOfStock}</SelectItem>
               </SelectContent>
             </Select>
           </>

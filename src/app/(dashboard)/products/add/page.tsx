@@ -13,6 +13,7 @@ import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/client";
 import { slugify, generateSKU } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { Category, Supplier } from "@/types";
 
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ type ProductFormValues = z.infer<typeof productSchema>;
 export default function AddProductPage() {
   const router = useRouter();
   const supabase = createClient();
+  const t = useT();
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -100,14 +102,12 @@ export default function AddProductPage() {
 
   const watchedName = watch("name");
 
-  // Auto-generate SKU when name changes
   React.useEffect(() => {
     if (watchedName) {
       setValue("sku", generateSKU(watchedName));
     }
   }, [watchedName, setValue]);
 
-  // ── Fetch categories & suppliers ──
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["categories"],
     queryFn: async () => {
@@ -126,7 +126,6 @@ export default function AddProductPage() {
     },
   });
 
-  // ── Image handling ──
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -140,12 +139,10 @@ export default function AddProductPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ── Submit mutation ──
   const mutation = useMutation({
     mutationFn: async (values: ProductFormValues) => {
       let imageUrl: string | null = null;
 
-      // Upload image if provided
       if (imageFile) {
         const ext = imageFile.name.split(".").pop();
         const path = `products/${Date.now()}.${ext}`;
@@ -159,7 +156,6 @@ export default function AddProductPage() {
 
       const slug = slugify(values.name);
 
-      // Insert product
       const { data: product, error: insertError } = await supabase
         .from("products")
         .insert({
@@ -182,30 +178,25 @@ export default function AddProductPage() {
 
       if (insertError) throw insertError;
 
-      // Generate QR code
       const qrValue = `PRODUCT:${product.id}:${product.sku}`;
       const qrDataUrl = await QRCode.toDataURL(qrValue, { width: 300, margin: 2 });
 
-      // Convert data URL to Blob and upload
       const qrBlob = await fetch(qrDataUrl).then((r) => r.blob());
       const qrPath = `products/qr-${product.id}.png`;
       await supabase.storage.from("product-images").upload(qrPath, qrBlob, { upsert: true });
       const { data: qrUrlData } = supabase.storage.from("product-images").getPublicUrl(qrPath);
 
-      // Update product with qr_code URL
       await supabase
         .from("products")
         .update({ qr_code: qrUrlData.publicUrl })
         .eq("id", product.id);
 
-      // Insert product_qr_code record
       await supabase.from("product_qr_codes").insert({
         product_id: product.id,
         qr_value: qrValue,
         qr_image_url: qrUrlData.publicUrl,
       });
 
-      // Insert variants if enabled
       if (hasVariants) {
         const toInsert = variantRows
           .filter((r) => r.sku.trim())
@@ -229,11 +220,11 @@ export default function AddProductPage() {
       return product;
     },
     onSuccess: () => {
-      toast.success("Product created successfully");
+      toast.success(t.productForm.toast.created);
       router.push("/products");
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? "Failed to create product");
+      toast.error(err.message ?? t.productForm.toast.createError);
     },
   });
 
@@ -242,11 +233,11 @@ export default function AddProductPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Add Product"
-        description="Create a new product in your catalog."
+        title={t.productForm.addTitle}
+        description={t.productForm.addDescription}
         action={
           <Button variant="outline" onClick={() => router.push("/products")}>
-            Cancel
+            {t.productForm.cancel}
           </Button>
         }
       />
@@ -258,45 +249,41 @@ export default function AddProductPage() {
           <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Basic Information</CardTitle>
+                <CardTitle className="text-base">{t.productForm.basicInfo}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Name */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="name">Product Name *</Label>
-                  <Input id="name" placeholder="e.g. Wireless Mouse" {...register("name")} />
+                  <Label htmlFor="name">{t.productForm.productName}</Label>
+                  <Input id="name" placeholder={t.productForm.productNamePlaceholder} {...register("name")} />
                   {errors.name && (
                     <p className="text-xs text-[hsl(var(--destructive))]">{errors.name.message}</p>
                   )}
                 </div>
 
-                {/* SKU */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="sku">SKU *</Label>
-                  <Input id="sku" placeholder="Auto-generated" {...register("sku")} />
+                  <Label htmlFor="sku">{t.productForm.sku}</Label>
+                  <Input id="sku" placeholder={t.productForm.skuPlaceholder} {...register("sku")} />
                   {errors.sku && (
                     <p className="text-xs text-[hsl(var(--destructive))]">{errors.sku.message}</p>
                   )}
                 </div>
 
-                {/* Description */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t.productForm.description}</Label>
                   <Textarea
                     id="description"
-                    placeholder="Optional product description..."
+                    placeholder={t.productForm.descriptionPlaceholder}
                     rows={3}
                     {...register("description")}
                   />
                 </div>
 
-                {/* Category & Supplier */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Category</Label>
+                    <Label>{t.productForm.category}</Label>
                     <Select onValueChange={(v) => setValue("category_id", v)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder={t.productForm.categoryPlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((c) => (
@@ -308,10 +295,10 @@ export default function AddProductPage() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Supplier</Label>
+                    <Label>{t.productForm.supplier}</Label>
                     <Select onValueChange={(v) => setValue("supplier_id", v)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select supplier" />
+                        <SelectValue placeholder={t.productForm.supplierPlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
                         {suppliers.map((s) => (
@@ -326,15 +313,14 @@ export default function AddProductPage() {
               </CardContent>
             </Card>
 
-            {/* Pricing */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Pricing</CardTitle>
+                <CardTitle className="text-base">{t.productForm.pricing}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="cost_price">Cost Price *</Label>
+                    <Label htmlFor="cost_price">{t.productForm.costPrice}</Label>
                     <Input
                       id="cost_price"
                       type="number"
@@ -348,7 +334,7 @@ export default function AddProductPage() {
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="selling_price">Selling Price *</Label>
+                    <Label htmlFor="selling_price">{t.productForm.sellingPrice}</Label>
                     <Input
                       id="selling_price"
                       type="number"
@@ -365,15 +351,14 @@ export default function AddProductPage() {
               </CardContent>
             </Card>
 
-            {/* Inventory */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Inventory</CardTitle>
+                <CardTitle className="text-base">{t.productForm.inventory}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="stock_quantity">Current Stock *</Label>
+                    <Label htmlFor="stock_quantity">{t.productForm.currentStock}</Label>
                     <Input
                       id="stock_quantity"
                       type="number"
@@ -386,7 +371,7 @@ export default function AddProductPage() {
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="minimum_stock">Minimum Stock *</Label>
+                    <Label htmlFor="minimum_stock">{t.productForm.minimumStock}</Label>
                     <Input
                       id="minimum_stock"
                       type="number"
@@ -399,8 +384,8 @@ export default function AddProductPage() {
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="unit">Unit *</Label>
-                    <Input id="unit" placeholder="pcs, kg, box..." {...register("unit")} />
+                    <Label htmlFor="unit">{t.productForm.unit}</Label>
+                    <Input id="unit" placeholder={t.productForm.unitPlaceholder} {...register("unit")} />
                     {errors.unit && (
                       <p className="text-xs text-[hsl(var(--destructive))]">{errors.unit.message}</p>
                     )}
@@ -414,9 +399,9 @@ export default function AddProductPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base">Sizes, Colors & Styles</CardTitle>
+                    <CardTitle className="text-base">{t.productForm.variants}</CardTitle>
                     <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
-                      Enable for shoes or clothing with multiple variants
+                      {t.productForm.variantsDesc}
                     </p>
                   </div>
                   <Switch
@@ -432,19 +417,18 @@ export default function AddProductPage() {
               {hasVariants && (
                 <CardContent className="space-y-3">
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    Stock is tracked per variant. The product total is auto-calculated.
+                    {t.productForm.variantsPerVariant}
                   </p>
 
-                  {/* Header row */}
                   <div className="grid grid-cols-[1fr_1fr_1fr_1.2fr_1fr_0.7fr_0.8fr_0.8fr_auto] gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] px-1">
-                    <span>Size</span>
-                    <span>Color</span>
-                    <span>Style</span>
-                    <span>SKU *</span>
-                    <span>Barcode</span>
-                    <span>Stock</span>
-                    <span>Cost</span>
-                    <span>Price</span>
+                    <span>{t.productForm.variantHeaders.size}</span>
+                    <span>{t.productForm.variantHeaders.color}</span>
+                    <span>{t.productForm.variantHeaders.style}</span>
+                    <span>{t.productForm.variantHeaders.sku}</span>
+                    <span>{t.productForm.variantHeaders.barcode}</span>
+                    <span>{t.productForm.variantHeaders.stock}</span>
+                    <span>{t.productForm.variantHeaders.cost}</span>
+                    <span>{t.productForm.variantHeaders.price}</span>
                     <span />
                   </div>
 
@@ -525,7 +509,7 @@ export default function AddProductPage() {
                     className="w-full"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add Variant
+                    {t.productForm.addVariant}
                   </Button>
                 </CardContent>
               )}
@@ -534,10 +518,9 @@ export default function AddProductPage() {
 
           {/* ── Sidebar ── */}
           <div className="space-y-6">
-            {/* Image Upload */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Product Image</CardTitle>
+                <CardTitle className="text-base">{t.productForm.productImage}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {imagePreview ? (
@@ -552,7 +535,7 @@ export default function AddProductPage() {
                       type="button"
                       title="Remove image"
                       onClick={clearImage}
-                      className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                      className="absolute end-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -565,17 +548,17 @@ export default function AddProductPage() {
                   >
                     <Upload className="h-8 w-8 text-[hsl(var(--muted-foreground))]" />
                     <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                      Click to upload image
+                      {t.productForm.clickToUpload}
                     </span>
                     <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                      PNG, JPG up to 5 MB
+                      {t.productForm.imageFormats}
                     </span>
                   </button>
                 )}
                 <input
                   ref={fileInputRef}
                   type="file"
-                  title="Product image"
+                  title={t.productForm.productImage}
                   accept="image/*"
                   className="hidden"
                   onChange={handleImageChange}
@@ -583,17 +566,16 @@ export default function AddProductPage() {
               </CardContent>
             </Card>
 
-            {/* Status */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Status</CardTitle>
+                <CardTitle className="text-base">{t.productForm.status}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">Active</p>
+                    <p className="text-sm font-medium">{t.productForm.active}</p>
                     <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                      Show product in POS
+                      {t.productForm.showInPOS}
                     </p>
                   </div>
                   <Switch
@@ -615,11 +597,11 @@ export default function AddProductPage() {
             onClick={() => router.push("/products")}
             disabled={mutation.isPending}
           >
-            Cancel
+            {t.productForm.cancel}
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {mutation.isPending ? "Creating..." : "Create Product"}
+            {mutation.isPending ? t.productForm.creating : t.productForm.createProduct}
           </Button>
         </div>
       </form>

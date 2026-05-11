@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -37,6 +38,7 @@ import { createClient } from "@/lib/supabase/client";
 function NotificationBell({ count = 0 }: { count?: number }) {
   return (
     <button
+      type="button"
       className="relative flex h-9 w-9 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
       aria-label="Notifications"
     >
@@ -57,6 +59,7 @@ function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       className="flex h-9 w-9 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
       aria-label="Toggle theme"
@@ -74,6 +77,7 @@ function UserDropdown() {
   const clearUser = useAuthStore((s) => s.clearUser);
   const router = useRouter();
   const supabase = createClient();
+  const t = useT();
 
   const displayName = user?.profile?.full_name ?? user?.email ?? "User";
   const email = user?.email ?? "";
@@ -90,15 +94,15 @@ function UserDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-[hsl(var(--accent))]">
+        <button type="button" className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-[hsl(var(--accent))]">
           <Avatar className="h-7 w-7">
             <AvatarImage src={avatarUrl} alt={displayName} />
             <AvatarFallback className="bg-blue-600 text-[10px] font-semibold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden min-w-0 text-left sm:block">
-            <p className="max-w-[120px] truncate text-sm font-medium leading-none">
+          <div className="hidden min-w-0 text-start sm:block">
+            <p className="max-w-30 truncate text-sm font-medium leading-none">
               {displayName}
             </p>
             <p className="mt-0.5 truncate text-xs capitalize text-[hsl(var(--muted-foreground))]">
@@ -123,12 +127,12 @@ function UserDropdown() {
 
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={() => router.push("/profile")}>
-            <User className="mr-2 h-4 w-4" />
-            Profile
+            <User className="me-2 h-4 w-4" />
+            {t.header.profile}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/settings")}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+            <Settings className="me-2 h-4 w-4" />
+            {t.header.settings}
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
@@ -138,8 +142,8 @@ function UserDropdown() {
           onClick={handleSignOut}
           className="text-[hsl(var(--destructive))] focus:text-[hsl(var(--destructive))]"
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign out
+          <LogOut className="me-2 h-4 w-4" />
+          {t.header.signOut}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -157,10 +161,10 @@ export function Header({ title, notificationCount = 0 }: HeaderProps) {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const toggleCollapsed = useUIStore((s) => s.toggleCollapsed);
   const setCommandOpen = useUIStore((s) => s.setCommandOpen);
+  const t = useT();
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 sm:px-6">
-      {/* Desktop: collapse/expand the persistent sidebar */}
       <Button
         variant="ghost"
         size="icon"
@@ -170,7 +174,6 @@ export function Header({ title, notificationCount = 0 }: HeaderProps) {
       >
         <Menu className="h-5 w-5" />
       </Button>
-      {/* Mobile: open the Sheet drawer */}
       <Button
         variant="ghost"
         size="icon"
@@ -181,18 +184,15 @@ export function Header({ title, notificationCount = 0 }: HeaderProps) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Page title */}
       {title && (
         <h1 className="hidden truncate text-lg font-semibold sm:block">{title}</h1>
       )}
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Right actions */}
       <div className="flex items-center gap-1">
-        {/* Search / command palette */}
         <button
+          type="button"
           onClick={() => setCommandOpen(true)}
           className={cn(
             "flex items-center gap-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]",
@@ -203,14 +203,14 @@ export function Header({ title, notificationCount = 0 }: HeaderProps) {
           aria-label="Search"
         >
           <Search className="h-3.5 w-3.5" />
-          <span>Search...</span>
-          <kbd className="ml-4 hidden rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[10px] font-medium leading-none lg:inline-block">
+          <span>{t.header.search}</span>
+          <kbd className="ms-4 hidden rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[10px] font-medium leading-none lg:inline-block">
             ⌘K
           </kbd>
         </button>
 
-        {/* Mobile search icon */}
         <button
+          type="button"
           onClick={() => setCommandOpen(true)}
           className="flex h-9 w-9 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] sm:hidden"
           aria-label="Search"

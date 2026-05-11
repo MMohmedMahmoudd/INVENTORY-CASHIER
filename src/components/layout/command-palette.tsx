@@ -40,6 +40,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { useUIStore } from "@/store/ui-store";
+import { useT } from "@/lib/i18n";
 import { NAV_ITEMS } from "@/lib/constants";
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
@@ -86,33 +87,19 @@ interface NavEntry {
 
 function flattenNavItems(): NavEntry[] {
   const entries: NavEntry[] = [];
-
   for (const item of NAV_ITEMS) {
     if ("href" in item && item.href) {
-      entries.push({
-        title: item.title,
-        href: item.href,
-        icon: item.icon,
-        group: "Navigation",
-      });
+      entries.push({ title: item.title, href: item.href, icon: item.icon, group: "Navigation" });
     } else if ("children" in item && item.children) {
       for (const child of item.children) {
-        entries.push({
-          title: child.title,
-          href: child.href,
-          icon: child.icon,
-          group: item.title,
-        });
+        entries.push({ title: child.title, href: child.href, icon: child.icon, group: item.title });
       }
     }
   }
-
   return entries;
 }
 
 const NAV_ENTRIES = flattenNavItems();
-
-// ─── Group entries by their group name ───────────────────────────────────────
 
 function groupEntries(entries: NavEntry[]): Map<string, NavEntry[]> {
   const map = new Map<string, NavEntry[]>();
@@ -125,7 +112,7 @@ function groupEntries(entries: NavEntry[]): Map<string, NavEntry[]> {
 
 const GROUPED_ENTRIES = groupEntries(NAV_ENTRIES);
 
-// ─── Recent actions (static for now, could be persisted) ─────────────────────
+// ─── Recent actions ───────────────────────────────────────────────────────────
 
 const RECENT_ACTIONS = [
   { title: "POS / Cashier", href: "/pos", icon: "Monitor", shortcut: "P" },
@@ -139,8 +126,8 @@ export function CommandPalette() {
   const commandOpen = useUIStore((s) => s.commandOpen);
   const setCommandOpen = useUIStore((s) => s.setCommandOpen);
   const router = useRouter();
+  const t = useT();
 
-  // Register Cmd+K / Ctrl+K shortcut
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -163,20 +150,19 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
-      <CommandInput placeholder="Search pages, actions..." />
+      <CommandInput placeholder={t.command.searchPlaceholder} />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>{t.command.noResults}</CommandEmpty>
 
-        {/* Recent actions */}
-        <CommandGroup heading="Recent">
+        <CommandGroup heading={t.command.recent}>
           {RECENT_ACTIONS.map((action) => (
             <CommandItem
               key={action.href}
               value={action.title}
               onSelect={() => navigate(action.href)}
             >
-              <NavIcon name={action.icon} className="mr-2 h-4 w-4 shrink-0" />
-              {action.title}
+              <NavIcon name={action.icon} className="me-2 h-4 w-4 shrink-0" />
+              {t.nav[action.title] ?? action.title}
               {action.shortcut && (
                 <CommandShortcut>⌘{action.shortcut}</CommandShortcut>
               )}
@@ -186,17 +172,16 @@ export function CommandPalette() {
 
         <CommandSeparator />
 
-        {/* Navigation groups */}
         {Array.from(GROUPED_ENTRIES.entries()).map(([group, entries]) => (
-          <CommandGroup key={group} heading={group}>
+          <CommandGroup key={group} heading={t.nav[group] ?? group}>
             {entries.map((entry) => (
               <CommandItem
                 key={entry.href}
                 value={`${entry.title} ${group}`}
                 onSelect={() => navigate(entry.href)}
               >
-                <NavIcon name={entry.icon} className="mr-2 h-4 w-4 shrink-0" />
-                {entry.title}
+                <NavIcon name={entry.icon} className="me-2 h-4 w-4 shrink-0" />
+                {t.nav[entry.title] ?? entry.title}
               </CommandItem>
             ))}
           </CommandGroup>

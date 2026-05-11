@@ -27,6 +27,7 @@ import {
 } from "recharts";
 
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 import { formatCurrency, formatDate, getStockStatus, downloadBlob, csvToBlob } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,7 @@ function CurrencyTooltip({ active, payload, label }: { active?: boolean; payload
 
 export default function ReportsPage() {
   const supabase = createClient();
+  const t = useT();
   const [dateFrom, setDateFrom] = useState(defaults.from);
   const [dateTo, setDateTo] = useState(defaults.to);
   const [activeTab, setActiveTab] = useState("overview");
@@ -267,25 +269,24 @@ export default function ReportsPage() {
     const headers = ["Date", "Revenue", "Orders"];
     const rows = dailyStats.map((d) => [d.date, String(d.revenue), String(d.orders)]);
     downloadBlob(csvToBlob([headers, ...rows]), `revenue-report-${dateFrom}-${dateTo}.csv`);
-    toast.success("CSV exported");
-  }, [dailyStats, dateFrom, dateTo]);
+    toast.success(t.reports.csvExported);
+  }, [dailyStats, dateFrom, dateTo, t]);
 
   const exportPDF = useCallback(async () => {
     try {
-      // Dynamically import jsPDF to avoid SSR issues
       const { default: jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       doc.setFontSize(18);
-      doc.text("Revenue Report", 14, 22);
+      doc.text(t.reports.title, 14, 22);
       doc.setFontSize(11);
-      doc.text(`Period: ${formatDate(dateFrom)} – ${formatDate(dateTo)}`, 14, 32);
-      doc.text(`Total Revenue: ${formatCurrency(totalRevenue)}`, 14, 42);
-      doc.text(`Total Orders: ${totalOrders}`, 14, 50);
-      doc.text(`Avg Order: ${formatCurrency(avgOrder)}`, 14, 58);
+      doc.text(`${t.reports.period} ${formatDate(dateFrom)} – ${formatDate(dateTo)}`, 14, 32);
+      doc.text(`${t.reports.totalRevenue}: ${formatCurrency(totalRevenue)}`, 14, 42);
+      doc.text(`${t.reports.totalOrders}: ${totalOrders}`, 14, 50);
+      doc.text(`${t.reports.avgOrderValue}: ${formatCurrency(avgOrder)}`, 14, 58);
 
       let y = 72;
       doc.setFontSize(13);
-      doc.text("Top Products", 14, y);
+      doc.text(t.reports.topProductsByRevenue, 14, y);
       y += 8;
       doc.setFontSize(10);
       topProducts.slice(0, 10).forEach((p, i) => {
@@ -298,35 +299,35 @@ export default function ReportsPage() {
       });
 
       doc.save(`report-${dateFrom}-${dateTo}.pdf`);
-      toast.success("PDF exported");
+      toast.success(t.reports.pdfExported);
     } catch {
-      toast.error("Failed to export PDF");
+      toast.error(t.reports.pdfFailed);
     }
-  }, [totalRevenue, totalOrders, avgOrder, topProducts, dateFrom, dateTo]);
+  }, [totalRevenue, totalOrders, avgOrder, topProducts, dateFrom, dateTo, t]);
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Reports & Analytics" description="Gain insights into sales, inventory, and product performance.">
+      <PageHeader title={t.reports.title} description={t.reports.description}>
         <Button variant="outline" size="sm" onClick={exportCSV}>
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          <Download className="me-2 h-4 w-4" />
+          {t.reports.exportCsv}
         </Button>
         <Button variant="outline" size="sm" onClick={exportPDF}>
-          <Download className="mr-2 h-4 w-4" />
-          Export PDF
+          <Download className="me-2 h-4 w-4" />
+          {t.reports.exportPdf}
         </Button>
       </PageHeader>
 
       {/* Date Range */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Period:</span>
+        <span className="text-sm font-medium text-[hsl(var(--muted-foreground))]">{t.reports.period}</span>
         <Input
           type="date"
           className="w-36"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
         />
-        <span className="text-[hsl(var(--muted-foreground))]">to</span>
+        <span className="text-[hsl(var(--muted-foreground))]">{t.common.to.toLowerCase()}</span>
         <Input
           type="date"
           className="w-36"
@@ -337,9 +338,9 @@ export default function ReportsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sales">Sales</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="overview">{t.reports.overview}</TabsTrigger>
+          <TabsTrigger value="sales">{t.reports.sales}</TabsTrigger>
+          <TabsTrigger value="inventory">{t.reports.inventory}</TabsTrigger>
         </TabsList>
 
         {/* ── Overview Tab ────────────────────────────────────────────────── */}
@@ -354,7 +355,7 @@ export default function ReportsPage() {
                   <Card>
                     <CardContent className="p-6">
                       <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
-                        <TrendingUp className="h-4 w-4" />Total Revenue
+                        <TrendingUp className="h-4 w-4" />{t.reports.totalRevenue}
                       </div>
                       <p className="mt-2 text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
                     </CardContent>
@@ -362,7 +363,7 @@ export default function ReportsPage() {
                   <Card>
                     <CardContent className="p-6">
                       <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
-                        <ShoppingCart className="h-4 w-4" />Total Orders
+                        <ShoppingCart className="h-4 w-4" />{t.reports.totalOrders}
                       </div>
                       <p className="mt-2 text-2xl font-bold">{totalOrders}</p>
                     </CardContent>
@@ -370,7 +371,7 @@ export default function ReportsPage() {
                   <Card>
                     <CardContent className="p-6">
                       <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
-                        <TrendingUp className="h-4 w-4" />Avg. Order Value
+                        <TrendingUp className="h-4 w-4" />{t.reports.avgOrderValue}
                       </div>
                       <p className="mt-2 text-2xl font-bold">{formatCurrency(avgOrder)}</p>
                     </CardContent>
@@ -382,7 +383,7 @@ export default function ReportsPage() {
             {/* Revenue Line Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Revenue Over Time</CardTitle>
+                <CardTitle>{t.reports.revenueOverTime}</CardTitle>
               </CardHeader>
               <CardContent>
                 {dailyLoading ? (
@@ -407,7 +408,7 @@ export default function ReportsPage() {
                       <Line
                         type="monotone"
                         dataKey="revenue"
-                        name="Revenue"
+                        name={t.reports.revenue}
                         stroke="#3b82f6"
                         strokeWidth={2}
                         dot={false}
@@ -422,7 +423,7 @@ export default function ReportsPage() {
             {/* Orders Bar Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Orders Over Time</CardTitle>
+                <CardTitle>{t.reports.ordersOverTime}</CardTitle>
               </CardHeader>
               <CardContent>
                 {dailyLoading ? (
@@ -440,7 +441,7 @@ export default function ReportsPage() {
                       <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                       <Tooltip content={<CurrencyTooltip />} />
                       <Legend />
-                      <Bar dataKey="orders" name="Orders" fill="#10b981" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="orders" name={t.reports.orders} fill="#10b981" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -455,7 +456,7 @@ export default function ReportsPage() {
             {/* Top Products Bar Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Top Products by Revenue</CardTitle>
+                <CardTitle>{t.reports.topProductsByRevenue}</CardTitle>
               </CardHeader>
               <CardContent>
                 {topLoading ? (
@@ -482,7 +483,7 @@ export default function ReportsPage() {
                         stroke="hsl(var(--muted-foreground))"
                       />
                       <Tooltip content={<CurrencyTooltip />} />
-                      <Bar dataKey="total_revenue" name="Revenue" fill="#3b82f6" radius={[0, 3, 3, 0]} />
+                      <Bar dataKey="total_revenue" name={t.reports.revenue} fill="#3b82f6" radius={[0, 3, 3, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -493,7 +494,7 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Payment Method Breakdown</CardTitle>
+                  <CardTitle>{t.reports.paymentMethodBreakdown}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {paymentLoading ? (
@@ -528,7 +529,7 @@ export default function ReportsPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Payment Counts</CardTitle>
+                  <CardTitle>{t.reports.paymentCounts}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {paymentLoading ? (
@@ -543,7 +544,7 @@ export default function ReportsPage() {
                             <div className="flex items-center justify-between text-sm">
                               <span className="capitalize font-medium">{p.method}</span>
                               <span className="text-[hsl(var(--muted-foreground))]">
-                                {formatCurrency(p.amount)} ({p.count} orders)
+                                {formatCurrency(p.amount)} ({p.count} {t.reports.orders})
                               </span>
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
@@ -560,7 +561,7 @@ export default function ReportsPage() {
                       })}
                       {paymentBreakdown.length === 0 && (
                         <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                          No data for this period
+                          {t.reports.noDataForPeriod}
                         </p>
                       )}
                     </div>
@@ -577,7 +578,7 @@ export default function ReportsPage() {
             {/* Stock Levels Bar */}
             <Card>
               <CardHeader>
-                <CardTitle>Stock Levels (Bottom 20 Products)</CardTitle>
+                <CardTitle>{t.reports.stockLevels}</CardTitle>
               </CardHeader>
               <CardContent>
                 {stockLoading ? (
@@ -604,8 +605,8 @@ export default function ReportsPage() {
                       />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="stock" name="Current Stock" fill="#3b82f6" radius={[0, 3, 3, 0]} />
-                      <Bar dataKey="minimum" name="Min. Required" fill="#f59e0b" radius={[0, 3, 3, 0]} />
+                      <Bar dataKey="stock" name={t.reports.currentStock} fill="#3b82f6" radius={[0, 3, 3, 0]} />
+                      <Bar dataKey="minimum" name={t.reports.minRequired} fill="#f59e0b" radius={[0, 3, 3, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -617,7 +618,7 @@ export default function ReportsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  Low Stock Alert ({lowStockProducts.length})
+                  {t.reports.lowStockAlert} ({lowStockProducts.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -630,7 +631,7 @@ export default function ReportsPage() {
                 ) : lowStockProducts.length === 0 ? (
                   <div className="flex items-center gap-2 py-6 text-sm text-emerald-600">
                     <Package className="h-4 w-4" />
-                    All products are adequately stocked.
+                    {t.reports.allStocksHealthy}
                   </div>
                 ) : (
                   <div className="space-y-2">

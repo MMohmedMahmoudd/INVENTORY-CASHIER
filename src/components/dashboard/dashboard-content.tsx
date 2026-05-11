@@ -14,8 +14,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate, getStockStatus } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { motion } from "framer-motion";
 import { subDays, format } from "date-fns";
+
+// silence unused import warnings from recharts
+void LineChart; void Line; void Users;
 
 const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
@@ -28,6 +32,7 @@ interface StatCardProps {
 }
 
 function StatCard({ title, value, change, icon, loading }: StatCardProps) {
+  const t = useT();
   if (loading) return <Skeleton className="h-32 rounded-xl" />;
   const positive = (change ?? 0) >= 0;
   return (
@@ -45,7 +50,7 @@ function StatCard({ title, value, change, icon, loading }: StatCardProps) {
               {change !== undefined && (
                 <div className={`mt-1 flex items-center gap-1 text-xs font-medium ${positive ? "text-emerald-500" : "text-red-500"}`}>
                   {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {positive ? "+" : ""}{change.toFixed(1)}% from yesterday
+                  {positive ? "+" : ""}{change.toFixed(1)}% {t.dashboard.fromYesterday}
                 </div>
               )}
             </div>
@@ -61,6 +66,7 @@ function StatCard({ title, value, change, icon, loading }: StatCardProps) {
 
 export function DashboardContent() {
   const supabase = createClient();
+  const t = useT();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -68,7 +74,7 @@ export function DashboardContent() {
       const today = new Date();
       const yesterday = subDays(today, 1);
 
-      const [todaySales, yesterdaySales, products, lowStock, customers] = await Promise.all([
+      const [todaySales, yesterdaySales, products, , customers] = await Promise.all([
         supabase.from("sales").select("total").eq("payment_status", "paid").gte("created_at", format(today, "yyyy-MM-dd")),
         supabase.from("sales").select("total").eq("payment_status", "paid").gte("created_at", format(yesterday, "yyyy-MM-dd")).lt("created_at", format(today, "yyyy-MM-dd")),
         supabase.from("products").select("id", { count: "exact" }).eq("is_active", true),
@@ -84,7 +90,6 @@ export function DashboardContent() {
       const yesterdayOrders = yesterdaySales.data?.length ?? 0;
       const ordersChange = yesterdayOrders === 0 ? 100 : ((todayOrders - yesterdayOrders) / yesterdayOrders) * 100;
 
-      // Fetch low stock separately
       const { count: lowStockCount } = await supabase
         .from("products")
         .select("id", { count: "exact", head: true })
@@ -186,58 +191,54 @@ export function DashboardContent() {
   });
 
   const paymentData = [
-    { name: "Cash", value: 55 },
-    { name: "Card", value: 30 },
-    { name: "Wallet", value: 15 },
+    { name: t.sales.paymentCash, value: 55 },
+    { name: t.sales.paymentCard, value: 30 },
+    { name: t.sales.paymentWallet, value: 15 },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t.dashboard.title}</h1>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          Welcome back! Here&apos;s what&apos;s happening today.
+          {t.dashboard.subtitle}
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Today's Revenue"
+          title={t.dashboard.todayRevenue}
           value={formatCurrency(stats?.todayRevenue ?? 0)}
           change={stats?.revenueChange}
           icon={<DollarSign className="h-5 w-5" />}
           loading={statsLoading}
         />
         <StatCard
-          title="Today's Orders"
+          title={t.dashboard.todayOrders}
           value={String(stats?.todayOrders ?? 0)}
           change={stats?.ordersChange}
           icon={<ShoppingCart className="h-5 w-5" />}
           loading={statsLoading}
         />
         <StatCard
-          title="Total Products"
+          title={t.dashboard.totalProducts}
           value={String(stats?.totalProducts ?? 0)}
           icon={<Package className="h-5 w-5" />}
           loading={statsLoading}
         />
         <StatCard
-          title="Low Stock Alerts"
+          title={t.dashboard.lowStockAlerts}
           value={String(stats?.lowStockCount ?? 0)}
           icon={<AlertTriangle className="h-5 w-5" />}
           loading={statsLoading}
         />
       </div>
 
-      {/* Charts Row */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Revenue Area Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">Revenue (Last 7 Days)</CardTitle>
-            <CardDescription className="text-xs">Daily revenue trend</CardDescription>
+            <CardTitle className="text-sm font-semibold">{t.dashboard.revenueChart}</CardTitle>
+            <CardDescription className="text-xs">{t.dashboard.dailyRevenueTrend}</CardDescription>
           </CardHeader>
           <CardContent>
             {revenueLoading ? (
@@ -262,11 +263,10 @@ export function DashboardContent() {
           </CardContent>
         </Card>
 
-        {/* Payment Method Pie */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">Payment Methods</CardTitle>
-            <CardDescription className="text-xs">Distribution breakdown</CardDescription>
+            <CardTitle className="text-sm font-semibold">{t.dashboard.paymentMethods}</CardTitle>
+            <CardDescription className="text-xs">{t.dashboard.distributionBreakdown}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
@@ -284,12 +284,10 @@ export function DashboardContent() {
         </Card>
       </div>
 
-      {/* Bottom Row */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Top Products */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">Top Products</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t.dashboard.topProducts}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {topLoading
@@ -300,20 +298,19 @@ export function DashboardContent() {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary))]/10 text-xs font-bold text-[hsl(var(--primary))]">{i + 1}</span>
                     <span className="truncate text-sm font-medium">{p.name}</span>
                   </div>
-                  <span className="ml-2 shrink-0 text-sm font-semibold">{formatCurrency(p.revenue)}</span>
+                  <span className="ms-2 shrink-0 text-sm font-semibold">{formatCurrency(p.revenue)}</span>
                 </div>
               ))}
             {!topLoading && !topProducts?.length && (
-              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">No sales data yet</p>
+              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">{t.dashboard.noSalesData}</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Low Stock */}
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <AlertTriangle className="h-4 w-4 text-amber-500" /> Low Stock
+              <AlertTriangle className="h-4 w-4 text-amber-500" /> {t.dashboard.lowStock}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -327,23 +324,22 @@ export function DashboardContent() {
                   </div>
                   <Badge
                     variant={status === "out" ? "destructive" : status === "critical" ? "destructive" : "warning" as "warning"}
-                    className="ml-2 shrink-0 text-xs"
+                    className="ms-2 shrink-0 text-xs"
                   >
-                    {p.stock_quantity} left
+                    {p.stock_quantity} {t.dashboard.left}
                   </Badge>
                 </div>
               );
             })}
             {!lowStockProducts?.length && (
-              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">All stocks are healthy</p>
+              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">{t.dashboard.allStocksHealthy}</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Recent Sales */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">Recent Sales</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t.dashboard.recentSales}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentSales?.map((sale) => (
@@ -351,26 +347,25 @@ export function DashboardContent() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{sale.invoice_number}</p>
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {(sale.customer as { name: string } | null)?.name ?? "Walk-in"} · {formatDate(sale.created_at)}
+                    {(sale.customer as { name: string } | null)?.name ?? t.dashboard.walkinCustomer} · {formatDate(sale.created_at)}
                   </p>
                 </div>
-                <div className="ml-2 flex shrink-0 items-center gap-1 text-sm font-semibold text-emerald-600">
+                <div className="ms-2 flex shrink-0 items-center gap-1 text-sm font-semibold text-emerald-600">
                   <ArrowUpRight className="h-3 w-3" />
                   {formatCurrency(sale.total)}
                 </div>
               </div>
             ))}
             {!recentSales?.length && (
-              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">No sales today</p>
+              <p className="py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">{t.dashboard.noSalesToday}</p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Orders bar chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold">Orders (Last 7 Days)</CardTitle>
+          <CardTitle className="text-sm font-semibold">{t.dashboard.ordersChart}</CardTitle>
         </CardHeader>
         <CardContent>
           {revenueLoading ? (
