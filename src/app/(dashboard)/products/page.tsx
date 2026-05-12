@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { Plus, Pencil, Trash2, QrCode, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, QrCode, Package, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
+import { PrintLabelDialog } from "@/components/shared/print-label-dialog";
 
 // ─── Stock Status Badge ───────────────────────────────────────────────────────
 
@@ -134,6 +135,7 @@ export default function ProductsPage() {
   const [stockFilter, setStockFilter] = React.useState<string>("all");
   const [deleteTarget, setDeleteTarget] = React.useState<Product | null>(null);
   const [qrTarget, setQrTarget] = React.useState<Product | null>(null);
+  const [printTarget, setPrintTarget] = React.useState<Product | null>(null);
 
   // ── Fetch categories for filter ──
   const { data: categories = [] } = useQuery({
@@ -297,6 +299,15 @@ export default function ProductsPage() {
             >
               <QrCode className="h-4 w-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setPrintTarget(p)}
+              title="Print Barcode Label"
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Edit">
               <Link href={`/products/${p.id}/edit`}>
                 <Pencil className="h-4 w-4" />
@@ -387,6 +398,13 @@ export default function ProductsPage() {
         product={qrTarget}
         open={!!qrTarget}
         onClose={() => setQrTarget(null)}
+      />
+
+      {/* Print label */}
+      <PrintLabelDialog
+        product={printTarget}
+        open={!!printTarget}
+        onClose={() => setPrintTarget(null)}
       />
 
       {/* Delete confirmation */}

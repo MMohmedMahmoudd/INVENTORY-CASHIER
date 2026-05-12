@@ -14,13 +14,16 @@ import {
   XCircle,
   CheckCircle2,
   Loader2,
+  Printer,
 } from "lucide-react";
 import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, getStockStatus, downloadBlob, csvToBlob, slugify } from "@/lib/utils";
+import { generateUniqueBarcode } from "@/lib/barcode";
 import { useT } from "@/lib/i18n";
 import { PageHeader } from "@/components/shared/page-header";
+import { PrintLabelDialog } from "@/components/shared/print-label-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -186,6 +189,7 @@ export default function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
 
+  const [printTarget, setPrintTarget] = useState<Product | null>(null);
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [adjustForm, setAdjustForm] = useState<AdjustForm>({
     mode: "add",
@@ -352,6 +356,7 @@ export default function InventoryPage() {
         };
 
         const isVariantImport = col.size !== -1 || col.color !== -1 || col.style !== -1;
+        const usedBarcodes = new Set<string>();
 
         if (isVariantImport) {
           const groups = new Map<string, string[][]>();
@@ -392,6 +397,7 @@ export default function InventoryPage() {
                 name,
                 slug: `${slugify(name)}-${Math.random().toString(36).substring(2, 6)}`,
                 sku: baseSku,
+                barcode: strVal(firstRow, col.barcode) || await generateUniqueBarcode(supabase, usedBarcodes),
                 stock_quantity: 0,
                 minimum_stock: minStk,
                 cost_price: cost,
@@ -504,7 +510,8 @@ export default function InventoryPage() {
                 unit:          strVal(cols, col.unit) ?? "piece",
                 is_active:     true,
               };
-              const bar  = strVal(cols, col.barcode);     if (bar)  newProd.barcode     = bar;
+              const bar  = strVal(cols, col.barcode);
+              newProd.barcode = bar || await generateUniqueBarcode(supabase, usedBarcodes);
               const desc = strVal(cols, col.description); if (desc) newProd.description = desc;
               if (cat) newProd.category_id = cat;
 
@@ -699,16 +706,27 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell>{formatCurrency(product.selling_price)}</TableCell>
                     <TableCell className="text-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setAdjustProduct(product);
-                          setAdjustForm({ mode: "add", quantity: "", reason: "", type: "adjustment" });
-                        }}
-                      >
-                        {t.inventory.adjust}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          title="Print Barcode Label"
+                          onClick={() => setPrintTarget(product)}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setAdjustProduct(product);
+                            setAdjustForm({ mode: "add", quantity: "", reason: "", type: "adjustment" });
+                          }}
+                        >
+                          {t.inventory.adjust}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -717,6 +735,13 @@ export default function InventoryPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Print label */}
+      <PrintLabelDialog
+        product={printTarget}
+        open={!!printTarget}
+        onClose={() => setPrintTarget(null)}
+      />
 
       {/* Adjust Dialog */}
       <Dialog open={!!adjustProduct} onOpenChange={(o) => !o && setAdjustProduct(null)}>

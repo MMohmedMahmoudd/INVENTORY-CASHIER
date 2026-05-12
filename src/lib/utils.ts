@@ -43,6 +43,12 @@ export function generateSKU(name: string): string {
   return `${prefix}-${random}`;
 }
 
+export function generateBarcode(): string {
+  const ts = Date.now().toString().slice(-8);
+  const rand = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  return ts + rand;
+}
+
 export function generateInvoiceNumber(): string {
   const date = new Date();
   const year = date.getFullYear();

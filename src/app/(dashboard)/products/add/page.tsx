@@ -13,6 +13,7 @@ import QRCode from "qrcode";
 
 import { createClient } from "@/lib/supabase/client";
 import { slugify, generateSKU } from "@/lib/utils";
+import { generateUniqueBarcode } from "@/lib/barcode";
 import { useT } from "@/lib/i18n";
 import type { Category, Supplier } from "@/types";
 
@@ -129,6 +130,11 @@ export default function AddProductPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be 2 MB or less.");
+      e.target.value = "";
+      return;
+    }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -156,12 +162,15 @@ export default function AddProductPage() {
 
       const slug = slugify(values.name);
 
+      const batchCodes = new Set<string>();
+
       const { data: product, error: insertError } = await supabase
         .from("products")
         .insert({
           name: values.name,
           slug,
           sku: values.sku,
+          barcode: await generateUniqueBarcode(supabase, batchCodes),
           category_id: values.category_id || null,
           supplier_id: values.supplier_id || null,
           description: values.description || null,
@@ -198,19 +207,21 @@ export default function AddProductPage() {
       });
 
       if (hasVariants) {
-        const toInsert = variantRows
-          .filter((r) => r.sku.trim())
-          .map((r) => ({
-            product_id: product.id,
-            size: r.size.trim() || null,
-            color: r.color.trim() || null,
-            style: r.style.trim() || null,
-            sku: r.sku.trim(),
-            barcode: r.barcode.trim() || null,
-            stock_quantity: parseInt(r.stock) || 0,
-            cost_price: r.cost ? parseFloat(r.cost) : null,
-            selling_price: r.selling ? parseFloat(r.selling) : null,
-          }));
+        const toInsert = await Promise.all(
+          variantRows
+            .filter((r) => r.sku.trim())
+            .map(async (r) => ({
+              product_id: product.id,
+              size: r.size.trim() || null,
+              color: r.color.trim() || null,
+              style: r.style.trim() || null,
+              sku: r.sku.trim(),
+              barcode: r.barcode.trim() || await generateUniqueBarcode(supabase, batchCodes),
+              stock_quantity: parseInt(r.stock) || 0,
+              cost_price: r.cost ? parseFloat(r.cost) : null,
+              selling_price: r.selling ? parseFloat(r.selling) : null,
+            }))
+        );
         if (toInsert.length > 0) {
           const { error: varErr } = await supabase.from("product_variants").insert(toInsert);
           if (varErr) throw varErr;

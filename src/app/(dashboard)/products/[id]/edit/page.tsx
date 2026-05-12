@@ -70,7 +70,6 @@ export default function EditProductPage() {
     handleSubmit,
     setValue,
     reset,
-    watch,
     formState: { errors },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<ProductFormValues>({
@@ -138,6 +137,11 @@ export default function EditProductPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be 2 MB or less.");
+      e.target.value = "";
+      return;
+    }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setRemoveImage(false);
